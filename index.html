@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lantern Links – a light-routing puzzle</title>
+<meta name="description" content="Lantern Links is a free browser puzzle: rotate tiles to carry light from the core to every lantern. Endless levels, no download, works on phone and desktop.">
+<meta name="theme-color" content="#14172b">
+<style>
+  :root {
+    --bg: #14172b;
+    --bg2: #1d2140;
+    --panel: #232850;
+    --text: #eef0ff;
+    --muted: #a3a8d3;
+    --accent: #ffc857;
+    --accent2: #ff8f3f;
+    --btn: #2e3466;
+    --btn-hover: #3a4180;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(circle at 50% 0%, #262b55 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100%;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none;
+  }
+  header {
+    width: 100%; max-width: 640px; padding: 12px 16px 4px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  h1 { font-size: 1.25rem; margin: 0; letter-spacing: .02em; }
+  h1 span { color: var(--accent); }
+  .stats { display: flex; gap: 14px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stats b { color: var(--text); font-weight: 600; }
+  main { width: 100%; max-width: 640px; padding: 4px 16px; flex: 1; display: flex; flex-direction: column; align-items: center; }
+  #wrap { position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: calc(100vh - 170px); max-width: calc(100vh - 170px); }
+  canvas { width: 100%; height: 100%; display: block; border-radius: 14px; background: var(--bg2); box-shadow: 0 10px 30px rgba(0,0,0,.35); touch-action: manipulation; cursor: pointer; outline: none; }
+  canvas:focus-visible { box-shadow: 0 0 0 3px var(--accent), 0 10px 30px rgba(0,0,0,.35); }
+  .controls { display: flex; gap: 8px; margin: 12px 0 4px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font: inherit; font-size: .9rem; color: var(--text); background: var(--btn);
+    border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer;
+  }
+  button:hover { background: var(--btn-hover); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); color: #2a1a00; font-weight: 600; }
+  button.primary:hover { background: #ffd47a; }
+  #overlay {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(12, 14, 30, .72); border-radius: 14px; text-align: center; padding: 20px;
+  }
+  #overlay.show { display: flex; }
+  #overlay .card { background: var(--panel); border-radius: 14px; padding: 22px 24px; max-width: 320px; box-shadow: 0 12px 36px rgba(0,0,0,.4); }
+  #overlay h2 { margin: 0 0 6px; color: var(--accent); font-size: 1.4rem; }
+  #overlay p { margin: 4px 0 14px; color: var(--muted); line-height: 1.45; }
+  .help { font-size: .85rem; color: var(--muted); text-align: center; margin: 6px 0 0; line-height: 1.5; max-width: 520px; }
+  footer { font-size: .8rem; color: var(--muted); padding: 10px 16px 16px; text-align: center; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lantern <span>Links</span></h1>
+  <div class="stats" aria-live="polite">
+    <div>Level <b id="lvl">1</b></div>
+    <div>Moves <b id="moves">0</b></div>
+    <div>Lit <b id="lit">0/0</b></div>
+  </div>
+</header>
+<main>
+  <div id="wrap">
+    <canvas id="board" tabindex="0" aria-label="Puzzle board. Use arrow keys to move and Space or Enter to rotate a tile."></canvas>
+    <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+      <div class="card">
+        <h2 id="ovTitle">All lanterns lit!</h2>
+        <p id="ovText"></p>
+        <button class="primary" id="nextBtn">Next level</button>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="resetBtn" title="Scramble this level again">Restart level</button>
+    <button id="prevBtn" title="Go back one level">◀ Level</button>
+    <button id="skipBtn" title="Go to the next level">Level ▶</button>
+  </div>
+  <p class="help">Tap a tile to turn it clockwise (right-click turns it back). Carry the light from the glowing core to every lantern. Each level has a solution, and every tile must be part of the lit network.</p>
+</main>
+<footer>
+  An original puzzle by <a href="https://webgame.fun/" target="_blank" rel="noopener">WebGame.fun</a> · Free browser games, no download ·
+  <a href="https://github.com/ShahriarSaeik/lantern-links" id="srcLink" target="_blank" rel="noopener">Source code</a>
+</footer>
+<script>
+(() => {
+  'use strict';
+  // Directions: bit masks and offsets
+  const N = 1, E = 2, S = 4, W = 8;
+  const DIRS = [
+    { bit: N, dx: 0, dy: -1, opp: S },
+    { bit: E, dx: 1, dy: 0, opp: W },
+    { bit: S, dx: 0, dy: 1, opp: N },
+    { bit: W, dx: -1, dy: 0, opp: E },
+  ];
+  const rotCW = m => ((m << 1) | (m >> 3)) & 15;
+  const rotCCW = m => ((m >> 1) | (m << 3)) & 15;
+
+  // Seeded random number generator so each level number is always the same puzzle
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('lanternlinks.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('lanternlinks.' + k, JSON.stringify(v)); } catch (e) {} },
+  };
+
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const el = id => document.getElementById(id);
+  const overlay = el('overlay');
+
+  let level = Math.max(1, store.get('level', 1) | 0);
+  let size, tiles, solution, source, moves, anim, cursor, solved, litSet;
+
+  function sizeFor(lv) { return Math.min(4 + Math.floor((lv - 1) / 3), 10); }
+
+  // Build a random spanning tree on the grid (randomised depth-first search).
+  // A tree guarantees one connected network with no loops, so the level is always solvable.
+  function generate(lv) {
+    const rnd = mulberry32(lv * 7919 + 17);
+    size = sizeFor(lv);
+    const n = size;
+    const mask = new Array(n * n).fill(0);
+    const seen = new Array(n * n).fill(false);
+    const cx = Math.floor((n - 1) / 2), cy = Math.floor((n - 1) / 2);
+    source = cy * n + cx;
+    const stack = [source];
+    seen[source] = true;
+    while (stack.length) {
+      // Picking from a random point in the stack mixes long corridors with branches
+      const pickIdx = rnd() < 0.45 ? stack.length - 1 : Math.floor(rnd() * stack.length);
+      const cur = stack[pickIdx];
+      const x = cur % n, y = (cur / n) | 0;
+      const opts = DIRS.filter(d => {
+        const nx = x + d.dx, ny = y + d.dy;
+        return nx >= 0 && ny >= 0 && nx < n && ny < n && !seen[ny * n + nx];
+      });
+      if (!opts.length) { stack.splice(pickIdx, 1); continue; }
+      const d = opts[Math.floor(rnd() * opts.length)];
+      const nxt = (y + d.dy) * n + (x + d.dx);
+      mask[cur] |= d.bit;
+      mask[nxt] |= d.opp;
+      seen[nxt] = true;
+      stack.push(nxt);
+    }
+    solution = mask.slice();
+    return rnd;
+  }
+
+  function scramble(rnd) {
+    tiles = solution.map(m => {
+      let t = m;
+      const r = Math.floor(rnd() * 4);
+      for (let i = 0; i < r; i++) t = rotCW(t);
+      return t;
+    });
+    // Make sure the level does not start solved
+    if (computeLit().size === tiles.length) {
+      for (let i = 0; i < tiles.length; i++) { if (rotCW(tiles[i]) !== tiles[i]) { tiles[i] = rotCW(tiles[i]); break; } }
+    }
+  }
+
+  function startLevel(lv, reshuffle) {
+    level = lv;
+    store.set('level', level);
+    const rnd = generate(lv);
+    if (reshuffle) { const r2 = mulberry32((Date.now() & 0xffffffff) ^ lv); scramble(r2); } else scramble(rnd);
+    moves = 0; solved = false; anim = {};
+    cursor = source;
+    overlay.classList.remove('show');
+    update();
+    resize();
+  }
+
+  function computeLit() {
+    const n = size, lit = new Set([source]);
+    const q = [source];
+    while (q.length) {
+      const c = q.shift();
+      const x = c % n, y = (c / n) | 0;
+      for (const d of DIRS) {
+        if (!(tiles[c] & d.bit)) continue;
+        const nx = x + d.dx, ny = y + d.dy;
+        if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+        const nb = ny * n + nx;
+        if (lit.has(nb) || !(tiles[nb] & d.opp)) continue;
+        lit.add(nb); q.push(nb);
+      }
+    }
+    return lit;
+  }
+
+  const degree = m => (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1);
+  const isLantern = i => i !== source && degree(solution[i]) === 1;
+
+  function update() {
+    litSet = computeLit();
+    let lanterns = 0, litLanterns = 0;
+    for (let i = 0; i < tiles.length; i++) if (isLantern(i)) { lanterns++; if (litSet.has(i)) litLanterns++; }
+    el('lvl').textContent = level;
+    el('moves').textContent = moves;
+    el('lit').textContent = litLanterns + '/' + lanterns;
+    el('prevBtn').disabled = level <= 1;
+    if (!solved && litSet.size === tiles.length) {
+      solved = true;
+      const best = store.get('best.' + level, null);
+      if (best === null || moves < best) store.set('best.' + level, moves);
+      const b = Math.min(moves, best === null ? moves : best);
+      setTimeout(() => {
+        el('ovText').textContent = 'Level ' + level + ' solved in ' + moves + ' move' + (moves === 1 ? '' : 's') + '. Your best: ' + b + '.';
+        overlay.classList.add('show');
+        el('nextBtn').focus();
+      }, 450);
+    }
+  }
+
+  function rotate(i, dir) {
+    if (solved || i < 0) return;
+    const before = tiles[i];
+    tiles[i] = dir > 0 ? rotCW(before) : rotCCW(before);
+    if (tiles[i] === before) return; // a straight-through tile in its other position, or a full cross
+    moves++;
+    anim[i] = { from: dir > 0 ? -Math.PI / 2 : Math.PI / 2, t0: performance.now() };
+    update();
+  }
+
+  // Rendering
+  let px = 1, cell = 1;
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    px = dpr;
+    cell = canvas.width / size;
+  }
+
+  function drawTile(i, now) {
+    const n = size, x = i % n, y = (i / n) | 0;
+    const cx = (x + 0.5) * cell, cy = (y + 0.5) * cell;
+    const lit = litSet.has(i);
+    let angle = 0;
+    const a = anim[i];
+    if (a) {
+      const t = Math.min(1, (now - a.t0) / 140);
+      angle = a.from * (1 - (1 - (1 - t) * (1 - t)));
+      if (t >= 1) delete anim[i];
+    }
+    // tile background
+    ctx.fillStyle = (i === cursor && document.activeElement === canvas) ? '#2b3163' : ((x + y) % 2 ? '#20254a' : '#1d2244');
+    ctx.fillRect(x * cell + px, y * cell + px, cell - 2 * px, cell - 2 * px);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    const m = tiles[i];
+    const w = Math.max(3 * px, cell * 0.16);
+    ctx.lineCap = 'round';
+    const col = lit ? '#ffc857' : '#4a5190';
+    if (lit) { ctx.shadowColor = 'rgba(255, 190, 80, .75)'; ctx.shadowBlur = cell * 0.18; }
+    ctx.strokeStyle = col; ctx.lineWidth = w;
+    ctx.beginPath();
+    for (const d of DIRS) if (m & d.bit) { ctx.moveTo(0, 0); ctx.lineTo(d.dx * cell / 2, d.dy * cell / 2); }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    if (i === source) {
+      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, cell * 0.34);
+      g.addColorStop(0, '#fff6d5'); g.addColorStop(0.5, '#ffc857'); g.addColorStop(1, 'rgba(255,143,63,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, cell * 0.34, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff1c2'; ctx.beginPath(); ctx.arc(0, 0, cell * 0.13, 0, Math.PI * 2); ctx.fill();
+    } else if (isLantern(i)) {
+      const r = cell * 0.2;
+      if (lit) {
+        const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2);
+        g.addColorStop(0, 'rgba(255,220,140,.9)'); g.addColorStop(1, 'rgba(255,143,63,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.rotate(-angle);
+      // lantern body
+      ctx.fillStyle = lit ? '#ffe7a3' : '#2a2f5c';
+      ctx.strokeStyle = lit ? '#ff8f3f' : '#6a71b8';
+      ctx.lineWidth = Math.max(1.5 * px, cell * 0.04);
+      roundRect(-r * 0.75, -r, r * 1.5, r * 2, r * 0.45);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = lit ? '#ff8f3f' : '#6a71b8';
+      ctx.fillRect(-r * 0.45, -r * 1.25, r * 0.9, r * 0.28);
+    } else {
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(0, 0, w * 0.62, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function frame(now) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < tiles.length; i++) drawTile(i, now);
+    requestAnimationFrame(frame);
+  }
+
+  // Input
+  function cellAt(ev) {
+    const r = canvas.getBoundingClientRect();
+    const x = Math.floor((ev.clientX - r.left) / (r.width / size));
+    const y = Math.floor((ev.clientY - r.top) / (r.height / size));
+    if (x < 0 || y < 0 || x >= size || y >= size) return -1;
+    return y * size + x;
+  }
+  canvas.addEventListener('click', ev => { const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, 1); } });
+  canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, -1); } });
+  canvas.addEventListener('keydown', ev => {
+    const n = size; let x = cursor % n, y = (cursor / n) | 0;
+    switch (ev.key) {
+      case 'ArrowUp': y = Math.max(0, y - 1); break;
+      case 'ArrowDown': y = Math.min(n - 1, y + 1); break;
+      case 'ArrowLeft': x = Math.max(0, x - 1); break;
+      case 'ArrowRight': x = Math.min(n - 1, x + 1); break;
+      case ' ': case 'Enter': rotate(cursor, ev.shiftKey ? -1 : 1); ev.preventDefault(); return;
+      default: return;
+    }
+    ev.preventDefault();
+    cursor = y * n + x;
+  });
+
+  el('nextBtn').addEventListener('click', () => startLevel(level + 1, false));
+  el('skipBtn').addEventListener('click', () => startLevel(level + 1, false));
+  el('prevBtn').addEventListener('click', () => { if (level > 1) startLevel(level - 1, false); });
+  el('resetBtn').addEventListener('click', () => startLevel(level, true));
+  window.addEventListener('resize', resize);
+
+  startLevel(level, false);
+  requestAnimationFrame(frame);
+
+  // Small hooks for automated testing
+  window.LanternLinks = {
+    solve() { tiles = solution.slice(); update(); },
+    state() { return { level, size, moves, solved, lit: litSet.size, total: tiles.length }; },
+  };
+})();
+</script>
+</body>
+</html>
