@@ -32,6 +32,7 @@ Open `index.html` in any modern browser, or serve the folder with any static ser
 MIT. See [LICENSE](LICENSE). Made by [WebGame.fun](https://webgame.fun/).
 
 ## Changelog
+- **1.2 (2026-11-14):** on wide screens the title, stats and buttons move to a side panel, so the board gets even space above and below. Spacing is more even and the background is softer.
 - **1.1 (2026-11-14):**
   - The board is now centred and sized to the largest square that fits any screen or iframe.
   - Added undo, par and star ratings, a timer, sound with a mute button, a how-to-play card and a win animation.
