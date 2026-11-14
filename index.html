@@ -37,6 +37,24 @@
   canvas:focus-visible { box-shadow: 0 0 0 3px var(--accent), 0 10px 30px rgba(0,0,0,.35); }
   .controls { grid-area: controls; display: flex; gap: 6px; padding: 4px 16px 6px; flex-wrap: wrap; justify-content: center; }
   footer { grid-area: footer; }
+  .stats small { font-size: inherit; font-weight: 400; color: var(--muted); }
+  .stats .lbl { display: none; }
+  /* Tall screens (phones): header, board and buttons as one centred group, footer at the bottom */
+  body.tall {
+    grid-template-rows: minmax(0, 1fr) auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "." "header" "main" "controls" "." "footer";
+  }
+  body.tall header { flex-direction: column; align-items: stretch; gap: 10px; padding: 8px 16px 4px; }
+  body.tall h1 { text-align: center; font-size: 1.4rem; }
+  body.tall .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+  body.tall .stats > div { background: var(--bg2); border-radius: 10px; padding: 6px 4px; text-align: center; }
+  body.tall .stats b { display: block; font-size: 1.1rem; text-transform: none; letter-spacing: 0; margin-top: 2px; }
+  body.tall .stats .lbl { display: inline; }
+  body.tall main { padding: 10px 16px; }
+  body.tall .controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 680px; margin: 0 auto; padding: 6px 16px; }
+  body.tall .controls button { min-height: 44px; font-size: .95rem; }
+  body.tall #helpBtn { order: 1; } body.tall #prevBtn { order: 2; } body.tall #soundBtn { order: 3; } body.tall #skipBtn { order: 4; }
+  body.tall footer { padding: 10px 16px 12px; }
   /* Wide screens (such as the site's iframe): board on the left, a side panel on the right */
   body.land {
     grid-template-columns: minmax(0, 1fr) auto 200px minmax(0, 1fr);
@@ -90,9 +108,9 @@
   <h1>Lantern <span>Links</span></h1>
   <div class="stats" aria-live="polite">
     <div>Level <b id="lvl">1</b></div>
-    <div>Moves <b id="moves">0</b>/<span id="par">0</span></div>
+    <div>Moves <b><span id="moves">0</span><small>/<span id="par">0</span></small></b></div>
     <div>Lit <b id="lit">0/0</b></div>
-    <div><b id="time">0:00</b></div>
+    <div><span class="lbl">Time</span> <b id="time">0:00</b></div>
   </div>
 </header>
 <main id="main">
@@ -327,10 +345,17 @@
     // side panel layout when there is clearly more width than height
     const land = W >= 560 && W > H * 1.25;
     document.body.classList.toggle('land', land);
+    const tall = !land && H > W * 1.15;
+    document.body.classList.toggle('tall', tall);
     let side;
     if (land) {
       const margin = Math.max(16, Math.round(H * 0.04));
       side = Math.min(H - margin * 2, W - 200 - 24 - 32, 760);
+    } else if (tall) {
+      // the board takes the full width unless the rest of the page would not fit
+      const used = document.querySelector('header').offsetHeight + document.querySelector('.controls').offsetHeight +
+        document.querySelector('footer').offsetHeight + 20;
+      side = Math.min(W - 32, H - used, 640);
     } else {
       const m = el('main');
       const cs = getComputedStyle(m);
