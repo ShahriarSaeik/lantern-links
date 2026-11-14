@@ -8,60 +8,59 @@
 <meta name="theme-color" content="#14172b">
 <style>
   :root {
-    --bg: #14172b;
-    --bg2: #1d2140;
-    --panel: #232850;
-    --text: #eef0ff;
-    --muted: #a3a8d3;
-    --accent: #ffc857;
-    --accent2: #ff8f3f;
-    --btn: #2e3466;
-    --btn-hover: #3a4180;
+    --bg: #14172b; --bg2: #1d2140; --panel: #232850; --text: #eef0ff; --muted: #a3a8d3;
+    --accent: #ffc857; --accent2: #ff8f3f; --btn: #2e3466; --btn-hover: #3a4180;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
   body {
     background: radial-gradient(circle at 50% 0%, #262b55 0%, var(--bg) 60%);
     color: var(--text);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    display: flex; flex-direction: column; align-items: center;
-    min-height: 100%;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none; -webkit-user-select: none;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-columns: minmax(0, 1fr);
+    height: 100vh; height: 100dvh;
+    -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
   }
   header {
-    width: 100%; max-width: 640px; padding: 12px 16px 4px;
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; max-width: 680px; margin: 0 auto; padding: 10px 14px 4px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
   }
-  h1 { font-size: 1.25rem; margin: 0; letter-spacing: .02em; }
+  h1 { font-size: 1.2rem; margin: 0; letter-spacing: .02em; white-space: nowrap; }
   h1 span { color: var(--accent); }
-  .stats { display: flex; gap: 14px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stats { display: flex; gap: 10px; font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
   .stats b { color: var(--text); font-weight: 600; }
-  main { width: 100%; max-width: 640px; padding: 4px 16px; flex: 1; display: flex; flex-direction: column; align-items: center; }
-  #wrap { position: relative; width: 100%; aspect-ratio: 1 / 1; max-height: calc(100vh - 170px); max-width: calc(100vh - 170px); }
+  main { min-height: 0; min-width: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 6px 14px; }
+  #wrap { position: relative; width: 300px; height: 300px; }
   canvas { width: 100%; height: 100%; display: block; border-radius: 14px; background: var(--bg2); box-shadow: 0 10px 30px rgba(0,0,0,.35); touch-action: manipulation; cursor: pointer; outline: none; }
   canvas:focus-visible { box-shadow: 0 0 0 3px var(--accent), 0 10px 30px rgba(0,0,0,.35); }
-  .controls { display: flex; gap: 8px; margin: 12px 0 4px; flex-wrap: wrap; justify-content: center; }
+  .controls { display: flex; gap: 6px; padding: 6px 14px 4px; flex-wrap: wrap; justify-content: center; }
   button {
-    font: inherit; font-size: .9rem; color: var(--text); background: var(--btn);
-    border: 0; border-radius: 10px; padding: 9px 14px; cursor: pointer;
+    font: inherit; font-size: .85rem; color: var(--text); background: var(--btn);
+    border: 0; border-radius: 10px; padding: 8px 12px; cursor: pointer; min-height: 36px;
   }
   button:hover { background: var(--btn-hover); }
+  button:disabled { opacity: .45; cursor: default; }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   button.primary { background: var(--accent); color: #2a1a00; font-weight: 600; }
   button.primary:hover { background: #ffd47a; }
-  #overlay {
+  button.icon { min-width: 38px; padding: 8px 10px; }
+  .overlay {
     position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
-    background: rgba(12, 14, 30, .72); border-radius: 14px; text-align: center; padding: 20px;
+    background: rgba(12, 14, 30, .74); border-radius: 14px; text-align: center; padding: 16px; z-index: 2;
   }
-  #overlay.show { display: flex; }
-  #overlay .card { background: var(--panel); border-radius: 14px; padding: 22px 24px; max-width: 320px; box-shadow: 0 12px 36px rgba(0,0,0,.4); }
-  #overlay h2 { margin: 0 0 6px; color: var(--accent); font-size: 1.4rem; }
-  #overlay p { margin: 4px 0 14px; color: var(--muted); line-height: 1.45; }
-  .help { font-size: .85rem; color: var(--muted); text-align: center; margin: 6px 0 0; line-height: 1.5; max-width: 520px; }
-  footer { font-size: .8rem; color: var(--muted); padding: 10px 16px 16px; text-align: center; }
+  .overlay.show { display: flex; }
+  .card { background: var(--panel); border-radius: 14px; padding: 18px 20px; max-width: 330px; box-shadow: 0 12px 36px rgba(0,0,0,.4); }
+  .card h2 { margin: 0 0 6px; color: var(--accent); font-size: 1.3rem; }
+  .card p { margin: 4px 0 12px; color: var(--muted); line-height: 1.45; font-size: .92rem; }
+  .card ul { text-align: left; margin: 0 0 14px; padding-left: 18px; color: var(--muted); line-height: 1.5; font-size: .9rem; }
+  .card li b { color: var(--text); }
+  .stars { font-size: 1.8rem; letter-spacing: 4px; margin: 2px 0 6px; color: #4a5190; }
+  .stars .on { color: var(--accent); text-shadow: 0 0 10px rgba(255,200,87,.6); }
+  .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  footer { font-size: .75rem; color: var(--muted); padding: 2px 14px 8px; text-align: center; }
   footer a { color: var(--accent); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
+  @media (max-height: 520px) { footer { display: none; } header { padding-top: 6px; } }
 </style>
 </head>
 <body>
@@ -69,36 +68,55 @@
   <h1>Lantern <span>Links</span></h1>
   <div class="stats" aria-live="polite">
     <div>Level <b id="lvl">1</b></div>
-    <div>Moves <b id="moves">0</b></div>
+    <div>Moves <b id="moves">0</b>/<span id="par">0</span></div>
     <div>Lit <b id="lit">0/0</b></div>
+    <div><b id="time">0:00</b></div>
   </div>
 </header>
-<main>
+<main id="main">
   <div id="wrap">
-    <canvas id="board" tabindex="0" aria-label="Puzzle board. Use arrow keys to move and Space or Enter to rotate a tile."></canvas>
-    <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+    <canvas id="board" tabindex="0" aria-label="Puzzle board. Arrow keys move, Space or Enter rotates, Z undoes."></canvas>
+    <div class="overlay" id="winOv" role="dialog" aria-modal="true" aria-labelledby="winTitle">
       <div class="card">
-        <h2 id="ovTitle">All lanterns lit!</h2>
-        <p id="ovText"></p>
-        <button class="primary" id="nextBtn">Next level</button>
+        <h2 id="winTitle">All lanterns lit!</h2>
+        <div class="stars" id="stars" aria-hidden="true"></div>
+        <p id="winText"></p>
+        <div class="row">
+          <button id="replayBtn">Replay</button>
+          <button class="primary" id="nextBtn">Next level</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="helpOv" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="card">
+        <h2 id="helpTitle">How to play</h2>
+        <ul>
+          <li><b>Tap a tile</b> to turn it clockwise. Right-click turns it back.</li>
+          <li>Carry light from the <b>glowing core</b> to every <b>lantern</b>.</li>
+          <li>The level ends when <b>every tile</b> is lit. No loops, no loose ends.</li>
+          <li>Finish within <b>par</b> moves for three stars.</li>
+          <li>Keys: arrows move, Space rotates, <b>Z</b> undoes, <b>R</b> restarts.</li>
+        </ul>
+        <button class="primary" id="helpClose">Play</button>
       </div>
     </div>
   </div>
-  <div class="controls">
-    <button id="resetBtn" title="Scramble this level again">Restart level</button>
-    <button id="prevBtn" title="Go back one level">◀ Level</button>
-    <button id="skipBtn" title="Go to the next level">Level ▶</button>
-  </div>
-  <p class="help">Tap a tile to turn it clockwise (right-click turns it back). Carry the light from the glowing core to every lantern. Each level has a solution, and every tile must be part of the lit network.</p>
 </main>
+<div class="controls">
+  <button id="undoBtn" title="Undo last move (Z)">↶ Undo</button>
+  <button id="resetBtn" title="Scramble this level again (R)">Restart</button>
+  <button id="prevBtn" title="Previous level">◀</button>
+  <button id="skipBtn" title="Next level">▶</button>
+  <button class="icon" id="soundBtn" title="Sound on/off" aria-pressed="true">🔊</button>
+  <button class="icon" id="helpBtn" title="How to play">?</button>
+</div>
 <footer>
-  An original puzzle by <a href="https://webgame.fun/" target="_blank" rel="noopener">WebGame.fun</a> · Free browser games, no download ·
+  An original puzzle by <a href="https://webgame.fun/" target="_blank" rel="noopener">WebGame.fun</a> ·
   <a href="https://github.com/ShahriarSaeik/lantern-links" id="srcLink" target="_blank" rel="noopener">Source code</a>
 </footer>
 <script>
 (() => {
   'use strict';
-  // Directions: bit masks and offsets
   const N = 1, E = 2, S = 4, W = 8;
   const DIRS = [
     { bit: N, dx: 0, dy: -1, opp: S },
@@ -109,7 +127,6 @@
   const rotCW = m => ((m << 1) | (m >> 3)) & 15;
   const rotCCW = m => ((m >> 1) | (m << 3)) & 15;
 
-  // Seeded random number generator so each level number is always the same puzzle
   function mulberry32(a) {
     return function () {
       a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -127,27 +144,26 @@
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
   const el = id => document.getElementById(id);
-  const overlay = el('overlay');
+  const winOv = el('winOv'), helpOv = el('helpOv');
 
   let level = Math.max(1, store.get('level', 1) | 0);
-  let size, tiles, solution, source, moves, anim, cursor, solved, litSet;
+  let size, tiles, solution, source, moves, par, anim, cursor, solved, litSet, history, startTime, endTime, solvedAt, lastLitCount;
+  let soundOn = store.get('sound', true);
 
   function sizeFor(lv) { return Math.min(4 + Math.floor((lv - 1) / 3), 10); }
 
-  // Build a random spanning tree on the grid (randomised depth-first search).
-  // A tree guarantees one connected network with no loops, so the level is always solvable.
+  // Random spanning tree: one connected network with no loops, so every level is solvable.
   function generate(lv) {
     const rnd = mulberry32(lv * 7919 + 17);
     size = sizeFor(lv);
     const n = size;
     const mask = new Array(n * n).fill(0);
     const seen = new Array(n * n).fill(false);
-    const cx = Math.floor((n - 1) / 2), cy = Math.floor((n - 1) / 2);
-    source = cy * n + cx;
+    const c = Math.floor((n - 1) / 2);
+    source = c * n + c;
     const stack = [source];
     seen[source] = true;
     while (stack.length) {
-      // Picking from a random point in the stack mixes long corridors with branches
       const pickIdx = rnd() < 0.45 ? stack.length - 1 : Math.floor(rnd() * stack.length);
       const cur = stack[pickIdx];
       const x = cur % n, y = (cur / n) | 0;
@@ -167,29 +183,29 @@
     return rnd;
   }
 
+  // Fewest clockwise taps that turn tile m into target t
+  function tapsTo(m, t) { for (let k = 0; k < 4; k++) { if (m === t) return k; m = rotCW(m); } return 0; }
+
   function scramble(rnd) {
-    tiles = solution.map(m => {
-      let t = m;
-      const r = Math.floor(rnd() * 4);
-      for (let i = 0; i < r; i++) t = rotCW(t);
-      return t;
-    });
-    // Make sure the level does not start solved
+    tiles = solution.map(m => { let t = m; const r = Math.floor(rnd() * 4); for (let i = 0; i < r; i++) t = rotCW(t); return t; });
     if (computeLit().size === tiles.length) {
       for (let i = 0; i < tiles.length; i++) { if (rotCW(tiles[i]) !== tiles[i]) { tiles[i] = rotCW(tiles[i]); break; } }
     }
+    par = tiles.reduce((s, m, i) => s + tapsTo(m, solution[i]), 0);
   }
 
   function startLevel(lv, reshuffle) {
     level = lv;
     store.set('level', level);
     const rnd = generate(lv);
-    if (reshuffle) { const r2 = mulberry32((Date.now() & 0xffffffff) ^ lv); scramble(r2); } else scramble(rnd);
-    moves = 0; solved = false; anim = {};
+    scramble(reshuffle ? mulberry32((Date.now() & 0x7fffffff) ^ (lv * 31)) : rnd);
+    moves = 0; solved = false; anim = {}; history = [];
+    startTime = 0; endTime = 0; solvedAt = 0;
     cursor = source;
-    overlay.classList.remove('show');
+    winOv.classList.remove('show');
+    litSet = computeLit(); lastLitCount = litSet.size;
     update();
-    resize();
+    layout();
   }
 
   function computeLit() {
@@ -213,48 +229,97 @@
   const degree = m => (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1);
   const isLantern = i => i !== source && degree(solution[i]) === 1;
 
+  function starsFor(m) { if (m <= par) return 3; if (m <= par + Math.ceil(par * 0.5)) return 2; return 1; }
+  function fmtTime(ms) { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
   function update() {
     litSet = computeLit();
     let lanterns = 0, litLanterns = 0;
     for (let i = 0; i < tiles.length; i++) if (isLantern(i)) { lanterns++; if (litSet.has(i)) litLanterns++; }
     el('lvl').textContent = level;
     el('moves').textContent = moves;
+    el('par').textContent = par;
     el('lit').textContent = litLanterns + '/' + lanterns;
     el('prevBtn').disabled = level <= 1;
+    el('undoBtn').disabled = !history.length || solved;
+    if (litSet.size > lastLitCount && !solved) sfx('link');
+    lastLitCount = litSet.size;
     if (!solved && litSet.size === tiles.length) {
-      solved = true;
+      solved = true; endTime = performance.now(); solvedAt = endTime;
+      const st = starsFor(moves);
       const best = store.get('best.' + level, null);
       if (best === null || moves < best) store.set('best.' + level, moves);
-      const b = Math.min(moves, best === null ? moves : best);
+      const bestStars = Math.max(st, store.get('stars.' + level, 0));
+      store.set('stars.' + level, bestStars);
+      sfx('win');
+      if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) { try { navigator.vibrate(40); } catch (e) {} }
       setTimeout(() => {
-        el('ovText').textContent = 'Level ' + level + ' solved in ' + moves + ' move' + (moves === 1 ? '' : 's') + '. Your best: ' + b + '.';
-        overlay.classList.add('show');
+        el('stars').innerHTML = [1, 2, 3].map(k => '<span class="' + (k <= st ? 'on' : '') + '">★</span>').join('');
+        el('winText').textContent = moves + ' move' + (moves === 1 ? '' : 's') + ' (par ' + par + ') in ' + fmtTime(endTime - startTime) +
+          '. Best on this level: ' + (b => b + ' move' + (b === 1 ? '' : 's'))(Math.min(moves, best === null ? moves : best)) + '.';
+        winOv.classList.add('show');
         el('nextBtn').focus();
-      }, 450);
+      }, 900);
     }
   }
 
-  function rotate(i, dir) {
-    if (solved || i < 0) return;
+  function rotate(i, dir, fromUndo) {
+    if (solved || i < 0 || helpOv.classList.contains('show')) return;
     const before = tiles[i];
     tiles[i] = dir > 0 ? rotCW(before) : rotCCW(before);
-    if (tiles[i] === before) return; // a straight-through tile in its other position, or a full cross
-    moves++;
+    if (tiles[i] === before) return; // a full cross looks the same every way
+    if (!startTime) startTime = performance.now();
+    if (fromUndo) { moves = Math.max(0, moves - 1); } else { moves++; history.push({ i, dir }); }
     anim[i] = { from: dir > 0 ? -Math.PI / 2 : Math.PI / 2, t0: performance.now() };
+    sfx('turn');
     update();
   }
 
-  // Rendering
-  let px = 1, cell = 1;
-  function resize() {
-    const r = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    canvas.width = Math.round(r.width * dpr);
-    canvas.height = Math.round(r.height * dpr);
-    px = dpr;
-    cell = canvas.width / size;
+  function undo() { const h = history.pop(); if (h) rotate(h.i, -h.dir, true); }
+
+  // Sound: tiny tones made in the browser, no audio files
+  let actx = null;
+  function sfx(kind) {
+    if (!soundOn) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      const now = actx.currentTime;
+      const tone = (f, t, d, v, type) => {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = type || 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, now + t); g.gain.exponentialRampToValueAtTime(v, now + t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + t + d);
+        o.connect(g).connect(actx.destination); o.start(now + t); o.stop(now + t + d + 0.02);
+      };
+      if (kind === 'turn') tone(420, 0, 0.06, 0.05, 'triangle');
+      else if (kind === 'link') tone(880, 0, 0.18, 0.06);
+      else if (kind === 'win') [523, 659, 784, 1047].forEach((f, k) => tone(f, k * 0.11, 0.35, 0.08));
+    } catch (e) {}
   }
 
+  // Layout: the board is the largest square that fits, centred in the free space
+  let px = 1, cell = 1;
+  function layout() {
+    const m = el('main');
+    const cs = getComputedStyle(m);
+    const w = m.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const h = m.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const side = Math.max(160, Math.floor(Math.min(w, h, 640)));
+    const wrap = el('wrap');
+    wrap.style.width = side + 'px'; wrap.style.height = side + 'px';
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    canvas.width = Math.round(side * dpr); canvas.height = Math.round(side * dpr);
+    px = dpr; cell = canvas.width / size;
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  let hover = -1;
   function drawTile(i, now) {
     const n = size, x = i % n, y = (i / n) | 0;
     const cx = (x + 0.5) * cell, cy = (y + 0.5) * cell;
@@ -263,12 +328,21 @@
     const a = anim[i];
     if (a) {
       const t = Math.min(1, (now - a.t0) / 140);
-      angle = a.from * (1 - (1 - (1 - t) * (1 - t)));
+      angle = a.from * (1 - t) * (1 - t);
       if (t >= 1) delete anim[i];
     }
-    // tile background
-    ctx.fillStyle = (i === cursor && document.activeElement === canvas) ? '#2b3163' : ((x + y) % 2 ? '#20254a' : '#1d2244');
+    const focused = i === cursor && document.activeElement === canvas;
+    ctx.fillStyle = focused ? '#2f3670' : (i === hover && !solved ? '#272d5c' : ((x + y) % 2 ? '#20254a' : '#1d2244'));
     ctx.fillRect(x * cell + px, y * cell + px, cell - 2 * px, cell - 2 * px);
+
+    // after a win, a wave of light pulses out from the core
+    let pulse = 0;
+    if (solved && solvedAt) {
+      const sx = source % n, sy = (source / n) | 0;
+      const dist = Math.abs(x - sx) + Math.abs(y - sy);
+      const t = (now - solvedAt) / 1000 - dist * 0.07;
+      if (t > 0 && t < 0.6) pulse = Math.sin(t / 0.6 * Math.PI);
+    }
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -276,8 +350,8 @@
     const m = tiles[i];
     const w = Math.max(3 * px, cell * 0.16);
     ctx.lineCap = 'round';
-    const col = lit ? '#ffc857' : '#4a5190';
-    if (lit) { ctx.shadowColor = 'rgba(255, 190, 80, .75)'; ctx.shadowBlur = cell * 0.18; }
+    const col = lit ? (pulse > 0 ? '#fff1c2' : '#ffc857') : '#4a5190';
+    if (lit) { ctx.shadowColor = 'rgba(255, 190, 80, .75)'; ctx.shadowBlur = cell * (0.18 + pulse * 0.25); }
     ctx.strokeStyle = col; ctx.lineWidth = w;
     ctx.beginPath();
     for (const d of DIRS) if (m & d.bit) { ctx.moveTo(0, 0); ctx.lineTo(d.dx * cell / 2, d.dy * cell / 2); }
@@ -285,19 +359,19 @@
     ctx.shadowBlur = 0;
 
     if (i === source) {
-      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, cell * 0.34);
+      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, cell * 0.36);
       g.addColorStop(0, '#fff6d5'); g.addColorStop(0.5, '#ffc857'); g.addColorStop(1, 'rgba(255,143,63,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, cell * 0.34, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, cell * 0.36, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff1c2'; ctx.beginPath(); ctx.arc(0, 0, cell * 0.13, 0, Math.PI * 2); ctx.fill();
     } else if (isLantern(i)) {
       const r = cell * 0.2;
       if (lit) {
-        const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2);
+        const flick = 1 + Math.sin(now / 260 + i) * 0.06 + pulse * 0.4;
+        const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2.1 * flick);
         g.addColorStop(0, 'rgba(255,220,140,.9)'); g.addColorStop(1, 'rgba(255,143,63,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2.1 * flick, 0, Math.PI * 2); ctx.fill();
       }
       ctx.rotate(-angle);
-      // lantern body
       ctx.fillStyle = lit ? '#ffe7a3' : '#2a2f5c';
       ctx.strokeStyle = lit ? '#ff8f3f' : '#6a71b8';
       ctx.lineWidth = Math.max(1.5 * px, cell * 0.04);
@@ -312,19 +386,12 @@
     ctx.restore();
   }
 
-  function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
   function frame(now) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (let i = 0; i < tiles.length; i++) drawTile(i, now);
+    if (startTime && !solved) el('time').textContent = fmtTime(now - startTime);
+    else if (solved) el('time').textContent = fmtTime(endTime - startTime);
+    else el('time').textContent = '0:00';
     requestAnimationFrame(frame);
   }
 
@@ -338,7 +405,15 @@
   }
   canvas.addEventListener('click', ev => { const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, 1); } });
   canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, -1); } });
-  canvas.addEventListener('keydown', ev => {
+  canvas.addEventListener('mousemove', ev => { hover = cellAt(ev); });
+  canvas.addEventListener('mouseleave', () => { hover = -1; });
+  document.addEventListener('keydown', ev => {
+    if (helpOv.classList.contains('show')) { if (ev.key === 'Escape' || ev.key === 'Enter') { closeHelp(); ev.preventDefault(); } return; }
+    const k = ev.key.toLowerCase();
+    if (k === 'z' && !ev.metaKey) { undo(); ev.preventDefault(); return; }
+    if ((ev.metaKey || ev.ctrlKey) && k === 'z') { undo(); ev.preventDefault(); return; }
+    if (k === 'r' && !ev.metaKey && !ev.ctrlKey) { startLevel(level, true); return; }
+    if (document.activeElement !== canvas) return;
     const n = size; let x = cursor % n, y = (cursor / n) | 0;
     switch (ev.key) {
       case 'ArrowUp': y = Math.max(0, y - 1); break;
@@ -352,19 +427,29 @@
     cursor = y * n + x;
   });
 
+  function closeHelp() { helpOv.classList.remove('show'); store.set('seenHelp', true); canvas.focus(); }
+  el('helpBtn').addEventListener('click', () => helpOv.classList.add('show'));
+  el('helpClose').addEventListener('click', closeHelp);
   el('nextBtn').addEventListener('click', () => startLevel(level + 1, false));
+  el('replayBtn').addEventListener('click', () => startLevel(level, true));
   el('skipBtn').addEventListener('click', () => startLevel(level + 1, false));
   el('prevBtn').addEventListener('click', () => { if (level > 1) startLevel(level - 1, false); });
   el('resetBtn').addEventListener('click', () => startLevel(level, true));
-  window.addEventListener('resize', resize);
+  el('undoBtn').addEventListener('click', undo);
+  function paintSound() { el('soundBtn').textContent = soundOn ? '🔊' : '🔇'; el('soundBtn').setAttribute('aria-pressed', String(soundOn)); }
+  el('soundBtn').addEventListener('click', () => { soundOn = !soundOn; store.set('sound', soundOn); paintSound(); });
+  paintSound();
+  window.addEventListener('resize', layout);
+  if (window.ResizeObserver) new ResizeObserver(layout).observe(el('main'));
 
   startLevel(level, false);
+  if (!store.get('seenHelp', false)) helpOv.classList.add('show');
   requestAnimationFrame(frame);
 
-  // Small hooks for automated testing
+  // Hooks for automated testing
   window.LanternLinks = {
     solve() { tiles = solution.slice(); update(); },
-    state() { return { level, size, moves, solved, lit: litSet.size, total: tiles.length }; },
+    state() { return { level, size, moves, par, solved, lit: litSet.size, total: tiles.length }; },
   };
 })();
 </script>
