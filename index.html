@@ -135,6 +135,7 @@
           <li>Carry light from the <b>glowing core</b> to every <b>lantern</b>.</li>
           <li>The level ends when <b>every tile</b> is lit. No loops, no loose ends.</li>
           <li>Finish within <b>par</b> moves for three stars.</li>
+          <li>You get <b>3 undos</b> per level, so think before you tap.</li>
           <li>Keys: arrows move, Space rotates, <b>Z</b> undoes, <b>R</b> restarts.</li>
         </ul>
         <button class="primary" id="helpClose">Play</button>
@@ -143,7 +144,7 @@
   </div>
 </main>
 <div class="controls">
-  <button id="undoBtn" title="Undo last move (Z)">↶ Undo</button>
+  <button id="undoBtn" title="Undo last move (Z). 3 per level.">↶ Undo (3)</button>
   <button id="resetBtn" title="Scramble this level again (R)">Restart</button>
   <button id="prevBtn" title="Previous level">◀</button>
   <button id="skipBtn" title="Next level">▶</button>
@@ -186,6 +187,9 @@
   const el = id => document.getElementById(id);
   const winOv = el('winOv'), helpOv = el('helpOv');
 
+  // Undo is limited to MAX_UNDO uses per level
+  const MAX_UNDO = 3;
+  let undosLeft = MAX_UNDO;
   let level = Math.max(1, store.get('level', 1) | 0);
   let size, tiles, solution, source, moves, par, anim, cursor, solved, litSet, history, startTime, endTime, solvedAt, lastLitCount;
   let soundOn = store.get('sound', true);
@@ -239,7 +243,7 @@
     store.set('level', level);
     const rnd = generate(lv);
     scramble(reshuffle ? mulberry32((Date.now() & 0x7fffffff) ^ (lv * 31)) : rnd);
-    moves = 0; solved = false; anim = {}; history = [];
+    moves = 0; solved = false; anim = {}; history = []; undosLeft = MAX_UNDO;
     startTime = 0; endTime = 0; solvedAt = 0;
     cursor = source;
     winOv.classList.remove('show');
@@ -281,7 +285,8 @@
     el('par').textContent = par;
     el('lit').textContent = litLanterns + '/' + lanterns;
     el('prevBtn').disabled = level <= 1;
-    el('undoBtn').disabled = !history.length || solved;
+    el('undoBtn').disabled = !history.length || solved || undosLeft <= 0;
+    el('undoBtn').textContent = '↶ Undo (' + undosLeft + ')';
     if (litSet.size > lastLitCount && !solved) sfx('link');
     lastLitCount = litSet.size;
     if (!solved && litSet.size === tiles.length) {
@@ -315,7 +320,10 @@
     update();
   }
 
-  function undo() { const h = history.pop(); if (h) rotate(h.i, -h.dir, true); }
+  function undo() {
+    if (solved || undosLeft <= 0 || !history.length || helpOv.classList.contains('show')) return;
+    const h = history.pop(); undosLeft--; rotate(h.i, -h.dir, true);
+  }
 
   // Sound: tiny tones made in the browser, no audio files
   let actx = null;
