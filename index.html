@@ -33,7 +33,7 @@
   .stats b { color: var(--text); font-weight: 600; }
   main { grid-area: main; min-height: 0; min-width: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 12px 16px; }
   #wrap { position: relative; width: 300px; height: 300px; }
-  canvas { width: 100%; height: 100%; display: block; border-radius: 14px; background: var(--bg2); box-shadow: 0 10px 30px rgba(0,0,0,.35); touch-action: manipulation; cursor: pointer; outline: none; }
+  canvas { width: 100%; height: 100%; display: block; border-radius: 14px; background: var(--bg2); box-shadow: 0 10px 30px rgba(0,0,0,.35); touch-action: manipulation; cursor: pointer; outline: none; -webkit-touch-callout: none; }
   canvas:focus-visible { box-shadow: 0 0 0 3px var(--accent), 0 10px 30px rgba(0,0,0,.35); }
   .controls { grid-area: controls; display: flex; gap: 6px; padding: 4px 16px 6px; flex-wrap: wrap; justify-content: center; }
   footer { grid-area: footer; }
@@ -52,7 +52,7 @@
   body.tall .stats .lbl { display: inline; }
   body.tall main { padding: 10px 16px; }
   body.tall .controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; max-width: 680px; margin: 0 auto; padding: 6px 16px; }
-  body.tall .controls button { min-height: 44px; font-size: .95rem; }
+  body.tall .controls button { min-height: 44px; font-size: .9rem; padding: 8px 6px; white-space: nowrap; }
   body.tall #helpBtn { order: 1; } body.tall #prevBtn { order: 2; } body.tall #soundBtn { order: 3; } body.tall #skipBtn { order: 4; }
   body.tall footer { padding: 10px 16px 12px; }
   /* Wide screens (such as the site's iframe): board on the left, a side panel on the right */
@@ -65,9 +65,9 @@
       ". main controls ."
       ". main footer   ."
       ". main .        .";
-    column-gap: 24px;
   }
-  body.land main { padding: 0; }
+  /* the 24px gap sits only between the board and the panel */
+  body.land main { padding: 0 24px 0 0; }
   body.land header { flex-direction: column; align-items: flex-start; padding: 0 0 14px; gap: 12px; max-width: none; }
   body.land h1 { font-size: 1.45rem; }
   body.land .stats { display: grid; grid-template-columns: auto auto; gap: 6px 14px; font-size: .9rem; }
@@ -100,6 +100,21 @@
   footer { font-size: .75rem; color: var(--muted); padding: 2px 16px 10px; text-align: center; }
   footer a { color: var(--accent); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
+  .toast {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); max-width: calc(100% - 24px); z-index: 3;
+    background: var(--panel); color: var(--text); font-size: .85rem; line-height: 1.35; text-align: center;
+    padding: 8px 14px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .toast.show { opacity: 1; }
+  button svg { display: block; width: 18px; height: 18px; margin: 0 auto; }
+  #resetBtn.armed, #resetBtn.armed:hover { background: var(--accent2); color: #2a1a00; font-weight: 600; }
+  .stars span { display: inline-block; animation: starIn .35s ease-out both; }
+  .stars span:nth-child(2) { animation-delay: .18s; }
+  .stars span:nth-child(3) { animation-delay: .36s; }
+  @keyframes starIn { from { opacity: 0; transform: scale(.3); } 60% { opacity: 1; transform: scale(1.25); } to { opacity: 1; transform: scale(1); } }
+  canvas.fadein { animation: boardIn .2s ease-out; }
+  @keyframes boardIn { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
   @media (max-height: 520px) { footer { display: none; } header { padding-top: 6px; } }
 </style>
 </head>
@@ -118,7 +133,7 @@
     <canvas id="board" tabindex="0" aria-label="Puzzle board. Arrow keys move, Space or Enter rotates, Z undoes."></canvas>
     <div class="overlay" id="winOv" role="dialog" aria-modal="true" aria-labelledby="winTitle">
       <div class="card">
-        <h2 id="winTitle">All lanterns lit!</h2>
+        <h2 id="winTitle">Whole board lit!</h2>
         <div class="stars" id="stars" aria-hidden="true"></div>
         <p id="winText"></p>
         <div class="row">
@@ -131,7 +146,7 @@
       <div class="card">
         <h2 id="helpTitle">How to play</h2>
         <ul>
-          <li><b>Tap a tile</b> to turn it clockwise. Right-click turns it back.</li>
+          <li><b>Tap a tile</b> to turn it clockwise. Right-click, or long-press on a phone, turns it back.</li>
           <li>Carry light from the <b>glowing core</b> to every <b>lantern</b>.</li>
           <li>The level ends when <b>every tile</b> is lit. No loops, no loose ends.</li>
           <li>Finish within <b>par</b> moves for three stars.</li>
@@ -141,15 +156,16 @@
         <button class="primary" id="helpClose">Play</button>
       </div>
     </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
 </main>
 <div class="controls">
   <button id="undoBtn" title="Undo last move (Z). 3 per level.">↶ Undo (3)</button>
   <button id="resetBtn" title="Scramble this level again (R)">Restart</button>
-  <button id="prevBtn" title="Previous level">◀</button>
-  <button id="skipBtn" title="Next level">▶</button>
-  <button class="icon" id="soundBtn" title="Sound on/off" aria-pressed="true">🔊</button>
-  <button class="icon" id="helpBtn" title="How to play">?</button>
+  <button id="prevBtn" title="Previous level">◀ Prev</button>
+  <button id="skipBtn" title="Solve this level first" disabled>Next ▶</button>
+  <button class="icon" id="soundBtn" title="Sound on/off" aria-label="Sound" aria-pressed="true"></button>
+  <button class="icon" id="helpBtn" title="How to play" aria-label="How to play"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.5v.4"/><circle cx="12" cy="17.2" r=".5" fill="currentColor"/></svg></button>
 </div>
 <footer>
   An original puzzle by <a href="https://webgame.fun/" target="_blank" rel="noopener">WebGame.fun</a> ·
@@ -180,6 +196,7 @@
   const store = {
     get(k, d) { try { const v = localStorage.getItem('lanternlinks.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('lanternlinks.' + k, JSON.stringify(v)); } catch (e) {} },
+    del(k) { try { localStorage.removeItem('lanternlinks.' + k); } catch (e) {} },
   };
 
   const canvas = document.getElementById('board');
@@ -191,7 +208,10 @@
   const MAX_UNDO = 3;
   let undosLeft = MAX_UNDO;
   let level = Math.max(1, store.get('level', 1) | 0);
-  let size, tiles, solution, source, moves, par, anim, cursor, solved, litSet, history, startTime, endTime, solvedAt, lastLitCount;
+  let size, tiles, solution, source, moves, par, anim, cursor, solved, litSet, history, solvedAt, lastLitCount;
+  let elapsed = 0, runStart = 0, started = false, solvedBefore = false, winTimer = 0, lanterns = [], booted = false;
+  const rmq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  let reduced = !!(rmq && rmq.matches);
   let soundOn = store.get('sound', true);
 
   function sizeFor(lv) { return Math.min(4 + Math.floor((lv - 1) / 3), 10); }
@@ -241,19 +261,29 @@
   function startLevel(lv, reshuffle) {
     level = lv;
     store.set('level', level);
+    store.del('cur');
+    clearTimeout(winTimer); winTimer = 0;
+    disarmRestart();
     const rnd = generate(lv);
     scramble(reshuffle ? mulberry32((Date.now() & 0x7fffffff) ^ (lv * 31)) : rnd);
     moves = 0; solved = false; anim = {}; history = []; undosLeft = MAX_UNDO;
-    startTime = 0; endTime = 0; solvedAt = 0;
+    elapsed = 0; runStart = 0; started = false; solvedAt = 0;
+    solvedBefore = store.get('stars.' + lv, null) !== null;
+    lanterns = [];
+    for (let i = 0; i < solution.length; i++) if (isLantern(i)) lanterns.push(i);
     cursor = source;
     winOv.classList.remove('show');
-    litSet = computeLit(); lastLitCount = litSet.size;
-    update();
+    litSet = null; litAt.clear();
+    update(true);
     layout();
+    fadeBoard();
   }
 
+  // Breadth-first walk from the core; litDepth[i] is the path length from the core
+  let litDepth = [];
   function computeLit() {
     const n = size, lit = new Set([source]);
+    litDepth = new Array(n * n).fill(0);
     const q = [source];
     while (q.length) {
       const c = q.shift();
@@ -264,7 +294,7 @@
         if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
         const nb = ny * n + nx;
         if (lit.has(nb) || !(tiles[nb] & d.opp)) continue;
-        lit.add(nb); q.push(nb);
+        lit.add(nb); litDepth[nb] = litDepth[c] + 1; q.push(nb);
       }
     }
     return lit;
@@ -276,36 +306,70 @@
   function starsFor(m) { if (m <= par) return 3; if (m <= par + Math.ceil(par * 0.5)) return 2; return 1; }
   function fmtTime(ms) { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
-  function update() {
+  // Write DOM text only when it changes
+  const textCache = {};
+  function setText(id, v) { v = String(v); if (textCache[id] !== v) { textCache[id] = v; el(id).textContent = v; } }
+
+  // Timer: counts only while the game is visible and not paused
+  function elapsedNow(now) { return elapsed + (runStart ? (now || performance.now()) - runStart : 0); }
+
+  const TURN_MS = 140, FADE_MS = 120, POP_MS = 200;
+  const litAt = new Map(); // tile -> time its light starts to fade in
+
+  function update(quiet) {
+    const prev = litSet, now = performance.now();
     litSet = computeLit();
-    let lanterns = 0, litLanterns = 0;
-    for (let i = 0; i < tiles.length; i++) if (isLantern(i)) { lanterns++; if (litSet.has(i)) litLanterns++; }
-    el('lvl').textContent = level;
-    el('moves').textContent = moves;
-    el('par').textContent = par;
-    el('lit').textContent = litLanterns + '/' + lanterns;
+    if (prev && !quiet && !reduced) {
+      // light spreads outward along the path from the core
+      let lo = Infinity, hi = 0; const fresh = [];
+      for (const i of litSet) if (!prev.has(i)) { fresh.push(i); lo = Math.min(lo, litDepth[i]); hi = Math.max(hi, litDepth[i]); }
+      if (fresh.length) {
+        const step = Math.min(35, 200 / Math.max(1, hi - lo));
+        for (const i of fresh) litAt.set(i, now + (litDepth[i] - lo) * step);
+        animUntil = Math.max(animUntil, now + (hi - lo) * step + POP_MS);
+      }
+    }
+    for (const i of litAt.keys()) if (!litSet.has(i)) litAt.delete(i);
+    setText('lvl', level);
+    setText('moves', moves);
+    setText('par', par);
+    setText('lit', litSet.size + '/' + tiles.length);
     el('prevBtn').disabled = level <= 1;
     el('undoBtn').disabled = !history.length || solved || undosLeft <= 0;
-    el('undoBtn').textContent = '↶ Undo (' + undosLeft + ')';
-    if (litSet.size > lastLitCount && !solved) sfx('link');
-    lastLitCount = litSet.size;
+    setText('undoBtn', '↶ Undo (' + undosLeft + ')');
+    let won = false;
     if (!solved && litSet.size === tiles.length) {
-      solved = true; endTime = performance.now(); solvedAt = endTime;
-      const st = starsFor(moves);
+      won = true; solved = true; solvedBefore = true; solvedAt = now;
+      if (runStart) { elapsed += now - runStart; runStart = 0; }
+      if (!reduced) animUntil = Math.max(animUntil, now + (2 * size * 0.07 + 0.6) * 1000);
+      store.del('cur'); disarmRestart();
+      el('undoBtn').disabled = true;
+      const st = starsFor(moves), mv = moves, tm = elapsed;
       const best = store.get('best.' + level, null);
       if (best === null || moves < best) store.set('best.' + level, moves);
       const bestStars = Math.max(st, store.get('stars.' + level, 0));
       store.set('stars.' + level, bestStars);
-      sfx('win');
-      if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) { try { navigator.vibrate(40); } catch (e) {} }
-      setTimeout(() => {
+      if (!quiet) {
+        sfx('win');
+        if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) { try { navigator.vibrate(40); } catch (e) {} }
+      }
+      clearTimeout(winTimer);
+      winTimer = setTimeout(() => {
+        winTimer = 0;
         el('stars').innerHTML = [1, 2, 3].map(k => '<span class="' + (k <= st ? 'on' : '') + '">★</span>').join('');
-        el('winText').textContent = moves + ' move' + (moves === 1 ? '' : 's') + ' (par ' + par + ') in ' + fmtTime(endTime - startTime) +
-          '. Best on this level: ' + (b => b + ' move' + (b === 1 ? '' : 's'))(Math.min(moves, best === null ? moves : best)) + '.';
+        el('winText').textContent = mv + ' move' + (mv === 1 ? '' : 's') + ' (par ' + par + ') in ' + fmtTime(tm) +
+          '. Best on this level: ' + (b => b + ' move' + (b === 1 ? '' : 's'))(Math.min(mv, best === null ? mv : best)) + '.';
         winOv.classList.add('show');
         el('nextBtn').focus();
       }, 900);
-    }
+    } else if (!quiet && !solved && litSet.size > lastLitCount) sfx('link');
+    lastLitCount = litSet.size;
+    const skip = el('skipBtn'), canNext = solved || solvedBefore;
+    skip.disabled = !canNext;
+    const tip = canNext ? 'Next level' : 'Solve this level first';
+    if (skip.title !== tip) skip.title = tip;
+    wake();
+    return won;
   }
 
   function rotate(i, dir, fromUndo) {
@@ -313,25 +377,84 @@
     const before = tiles[i];
     tiles[i] = dir > 0 ? rotCW(before) : rotCCW(before);
     if (tiles[i] === before) return; // a full cross looks the same every way
-    if (!startTime) startTime = performance.now();
+    if (!started) { started = true; if (!paused) runStart = performance.now(); }
     if (fromUndo) { moves = Math.max(0, moves - 1); } else { moves++; history.push({ i, dir }); }
-    anim[i] = { from: dir > 0 ? -Math.PI / 2 : Math.PI / 2, t0: performance.now() };
-    sfx('turn');
-    update();
+    if (!reduced) {
+      const t0 = performance.now();
+      anim[i] = { from: dir > 0 ? -Math.PI / 2 : Math.PI / 2, t0 };
+      animUntil = Math.max(animUntil, t0 + TURN_MS);
+    }
+    // the winning move plays only the win sound
+    if (!update()) sfx('turn');
+    saveCur();
   }
 
+  const NO_UNDO = 'No undos left. Restart gives you 3 more.';
   function undo() {
-    if (solved || undosLeft <= 0 || !history.length || helpOv.classList.contains('show')) return;
+    if (solved || helpOv.classList.contains('show')) return;
+    if (undosLeft <= 0) { toast(NO_UNDO); return; }
+    if (!history.length) return;
     const h = history.pop(); undosLeft--; rotate(h.i, -h.dir, true);
+    if (undosLeft === 0) toast(NO_UNDO);
+  }
+
+  // Small message at the bottom of the board
+  let toastTimer = 0;
+  function toast(msg, ms) {
+    const t = el('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), ms || 2500);
+  }
+
+  // Restart asks once when there are moves to lose
+  let armTimer = 0;
+  function disarmRestart() {
+    clearTimeout(armTimer); armTimer = 0;
+    const b = el('resetBtn'); b.textContent = 'Restart'; b.classList.remove('armed');
+  }
+  function pressRestart() {
+    if (moves > 0 && !solved && !armTimer) {
+      const b = el('resetBtn'); b.textContent = 'Sure?'; b.classList.add('armed');
+      armTimer = setTimeout(disarmRestart, 2500);
+      return;
+    }
+    startLevel(level, true);
+  }
+
+  // Progress inside a level survives a reload
+  function saveCur() {
+    if (solved || !tiles || (!started && !history.length && undosLeft === MAX_UNDO)) return;
+    store.set('cur', { lv: level, t: tiles, p: par, m: moves, u: undosLeft, e: Math.round(elapsedNow()), h: history, s: started });
+  }
+  function restoreCur(c) {
+    if (!c || c.lv !== level || !Array.isArray(c.t) || c.t.length !== solution.length) return false;
+    if (!Number.isInteger(c.m) || c.m < 0 || !Number.isInteger(c.u) || c.u < 0 || c.u > MAX_UNDO || !Number.isInteger(c.p) || c.p < 0) return false;
+    for (let i = 0; i < c.t.length; i++) {
+      let m = c.t[i], ok = false;
+      if (!Number.isInteger(m)) return false;
+      for (let k = 0; k < 4 && !ok; k++) { if (m === solution[i]) ok = true; m = rotCW(m); }
+      if (!ok) return false;
+    }
+    const keep = tiles;
+    tiles = c.t.slice();
+    if (computeLit().size === tiles.length) { tiles = keep; return false; }
+    par = c.p; moves = c.m; undosLeft = c.u;
+    history = Array.isArray(c.h) ? c.h.filter(x => x && Number.isInteger(x.i) && x.i >= 0 && x.i < tiles.length && (x.dir === 1 || x.dir === -1)) : [];
+    elapsed = Math.max(0, +c.e || 0); started = !!c.s; runStart = 0;
+    if (started && !paused) runStart = performance.now();
+    litSet = null; update(true);
+    return true;
   }
 
   // Sound: tiny tones made in the browser, no audio files
   let actx = null;
+  const quietPromise = p => { if (p && p.catch) p.catch(() => {}); };
   function sfx(kind) {
     if (!soundOn) return;
     try {
       actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-      if (actx.state === 'suspended') actx.resume();
+      if (actx.state === 'suspended') quietPromise(actx.resume());
       const now = actx.currentTime;
       const tone = (f, t, d, v, type) => {
         const o = actx.createOscillator(), g = actx.createGain();
@@ -346,6 +469,25 @@
     } catch (e) {}
   }
 
+  // Pause while the tab is hidden or the help card is open
+  let paused = false;
+  function setPaused() {
+    const p = document.hidden || helpOv.classList.contains('show');
+    if (p === paused) return;
+    paused = p;
+    const now = performance.now();
+    if (p) {
+      if (runStart) { elapsed += now - runStart; runStart = 0; }
+      if (tickId) { clearTimeout(tickId); tickId = 0; }
+      try { if (actx && actx.state === 'running') quietPromise(actx.suspend()); } catch (e) {}
+      saveCur();
+    } else {
+      if (started && !solved) runStart = now;
+      try { if (actx && actx.state === 'suspended' && soundOn) quietPromise(actx.resume()); } catch (e) {}
+      wake();
+    }
+  }
+
   // Layout: the board is the largest square that fits, centred in the free space
   let px = 1, cell = 1;
   function layout() {
@@ -357,6 +499,7 @@
     document.body.classList.toggle('tall', tall);
     let side;
     if (land) {
+      // 200px panel, 24px gap, at least 16px free on each side
       const margin = Math.max(16, Math.round(H * 0.04));
       side = Math.min(H - margin * 2, W - 200 - 24 - 32, 760);
     } else if (tall) {
@@ -375,90 +518,185 @@
     const wrap = el('wrap');
     wrap.style.width = side + 'px'; wrap.style.height = side + 'px';
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
-    canvas.width = Math.round(side * dpr); canvas.height = Math.round(side * dpr);
-    px = dpr; cell = canvas.width / size;
+    const cw = Math.round(side * dpr);
+    if (canvas.width !== cw || cell !== cw / size) {
+      canvas.width = cw; canvas.height = cw;
+      scv.width = cw; scv.height = cw;
+      px = dpr; cell = cw / size; sprites = {};
+    }
+    wake();
   }
 
-  function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
+  // Drawing. Tile pictures (with their glow) are drawn once per size into small
+  // sprites; the board is built into a back canvas only when something changes.
+  const scv = document.createElement('canvas'), sctx = scv.getContext('2d');
+  let sprites = {};
+  function sprite(key, draw) {
+    let s = sprites[key];
+    if (!s) {
+      s = document.createElement('canvas');
+      const S = 2 * Math.ceil(cell * 0.8);
+      s.width = s.height = S;
+      const c = s.getContext('2d'); c.translate(S / 2, S / 2); draw(c);
+      sprites[key] = s;
+    }
+    return s;
+  }
+  const blit = (c, s) => c.drawImage(s, -s.width / 2, -s.height / 2);
+  function drawPipe(c, m, lit, pulse, dot) {
+    const w = Math.max(3 * px, cell * 0.16);
+    c.lineCap = 'round';
+    const col = lit ? (pulse > 0 ? '#fff1c2' : '#ffc857') : '#4a5190';
+    if (lit) { c.shadowColor = 'rgba(255, 190, 80, .75)'; c.shadowBlur = cell * (0.18 + pulse * 0.25); }
+    c.strokeStyle = col; c.lineWidth = w;
+    c.beginPath();
+    for (const d of DIRS) if (m & d.bit) { c.moveTo(0, 0); c.lineTo(d.dx * cell / 2, d.dy * cell / 2); }
+    c.stroke();
+    c.shadowBlur = 0;
+    if (dot) { c.fillStyle = col; c.beginPath(); c.arc(0, 0, w * 0.62, 0, Math.PI * 2); c.fill(); }
+  }
+  const pipeSprite = (m, lit, dot) => sprite('p' + m + (lit ? 'L' : 'd') + (dot ? '.' : ''), c => drawPipe(c, m, lit, 0, dot));
+  function drawCore(c) {
+    const g = c.createRadialGradient(0, 0, 1, 0, 0, cell * 0.36);
+    g.addColorStop(0, '#fff6d5'); g.addColorStop(0.5, '#ffc857'); g.addColorStop(1, 'rgba(255,143,63,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, cell * 0.36, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#fff1c2'; c.beginPath(); c.arc(0, 0, cell * 0.13, 0, Math.PI * 2); c.fill();
+  }
+  function drawGlow(c) {
+    const R = cell * 0.2 * 2.1;
+    const g = c.createRadialGradient(0, 0, 1, 0, 0, R);
+    g.addColorStop(0, 'rgba(255,220,140,.9)'); g.addColorStop(1, 'rgba(255,143,63,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fill();
+  }
+  function lanternBody(c, lit) {
+    const r = cell * 0.2;
+    c.fillStyle = lit ? '#ffe7a3' : '#2a2f5c';
+    c.strokeStyle = lit ? '#ff8f3f' : '#6a71b8';
+    c.lineWidth = Math.max(1.5 * px, cell * 0.04);
+    roundRect(c, -r * 0.75, -r, r * 1.5, r * 2, r * 0.45);
+    c.fill(); c.stroke();
+    c.fillStyle = lit ? '#ff8f3f' : '#6a71b8';
+    c.fillRect(-r * 0.45, -r * 1.25, r * 0.9, r * 0.28);
   }
 
   let hover = -1;
-  function drawTile(i, now) {
+  const fxAmt = [], fxPop = [], fxPulse = [];
+  function drawTile(c, i, now) {
     const n = size, x = i % n, y = (i / n) | 0;
     const cx = (x + 0.5) * cell, cy = (y + 0.5) * cell;
     const lit = litSet.has(i);
     let angle = 0;
     const a = anim[i];
     if (a) {
-      const t = Math.min(1, (now - a.t0) / 140);
+      const t = Math.min(1, (now - a.t0) / TURN_MS);
       angle = a.from * (1 - t) * (1 - t);
       if (t >= 1) delete anim[i];
     }
-    const focused = i === cursor && document.activeElement === canvas;
-    ctx.fillStyle = focused ? '#2f3670' : (i === hover && !solved ? '#272d5c' : ((x + y) % 2 ? '#20254a' : '#1d2244'));
-    ctx.fillRect(x * cell + px, y * cell + px, cell - 2 * px, cell - 2 * px);
-
+    // light fades in along the path, with a small pop
+    let amt = lit ? 1 : 0, pop = 1;
+    const la = litAt.get(i);
+    if (lit && la !== undefined) {
+      const t = now - la;
+      amt = Math.max(0, Math.min(1, t / FADE_MS));
+      if (t > 0 && t < POP_MS) pop = 1 + 0.12 * Math.sin(t / POP_MS * Math.PI);
+      if (t >= POP_MS) litAt.delete(i);
+    }
     // after a win, a wave of light pulses out from the core
     let pulse = 0;
-    if (solved && solvedAt) {
+    if (solved && solvedAt && !reduced) {
       const sx = source % n, sy = (source / n) | 0;
       const dist = Math.abs(x - sx) + Math.abs(y - sy);
       const t = (now - solvedAt) / 1000 - dist * 0.07;
       if (t > 0 && t < 0.6) pulse = Math.sin(t / 0.6 * Math.PI);
     }
+    fxAmt[i] = amt; fxPop[i] = pop; fxPulse[i] = pulse;
 
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    const m = tiles[i];
-    const w = Math.max(3 * px, cell * 0.16);
-    ctx.lineCap = 'round';
-    const col = lit ? (pulse > 0 ? '#fff1c2' : '#ffc857') : '#4a5190';
-    if (lit) { ctx.shadowColor = 'rgba(255, 190, 80, .75)'; ctx.shadowBlur = cell * (0.18 + pulse * 0.25); }
-    ctx.strokeStyle = col; ctx.lineWidth = w;
-    ctx.beginPath();
-    for (const d of DIRS) if (m & d.bit) { ctx.moveTo(0, 0); ctx.lineTo(d.dx * cell / 2, d.dy * cell / 2); }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    const focused = i === cursor && document.activeElement === canvas;
+    c.fillStyle = focused ? '#2f3670' : (i === hover && !solved ? '#272d5c' : ((x + y) % 2 ? '#20254a' : '#1d2244'));
+    c.fillRect(x * cell + px, y * cell + px, cell - 2 * px, cell - 2 * px);
 
-    if (i === source) {
-      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, cell * 0.36);
-      g.addColorStop(0, '#fff6d5'); g.addColorStop(0.5, '#ffc857'); g.addColorStop(1, 'rgba(255,143,63,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, cell * 0.36, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff1c2'; ctx.beginPath(); ctx.arc(0, 0, cell * 0.13, 0, Math.PI * 2); ctx.fill();
-    } else if (isLantern(i)) {
-      const r = cell * 0.2;
-      if (lit) {
-        const flick = 1 + Math.sin(now / 260 + i) * 0.06 + pulse * 0.4;
-        const g = ctx.createRadialGradient(0, 0, 1, 0, 0, r * 2.1 * flick);
-        g.addColorStop(0, 'rgba(255,220,140,.9)'); g.addColorStop(1, 'rgba(255,143,63,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 2.1 * flick, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.rotate(-angle);
-      ctx.fillStyle = lit ? '#ffe7a3' : '#2a2f5c';
-      ctx.strokeStyle = lit ? '#ff8f3f' : '#6a71b8';
-      ctx.lineWidth = Math.max(1.5 * px, cell * 0.04);
-      roundRect(-r * 0.75, -r, r * 1.5, r * 2, r * 0.45);
-      ctx.fill(); ctx.stroke();
-      ctx.fillStyle = lit ? '#ff8f3f' : '#6a71b8';
-      ctx.fillRect(-r * 0.45, -r * 1.25, r * 0.9, r * 0.28);
-    } else {
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(0, 0, w * 0.62, 0, Math.PI * 2); ctx.fill();
+    const m = tiles[i], kind = i === source ? 'c' : (isLantern(i) ? 'l' : 'p');
+    const plain = !angle && pop === 1;
+    c.save();
+    // whole pixels when still, so the sprite copy stays sharp
+    if (plain) c.translate(Math.round(cx), Math.round(cy)); else c.translate(cx, cy);
+    if (angle) c.rotate(angle);
+    if (pop !== 1) c.scale(pop, pop);
+    if (pulse > 0 && lit) drawPipe(c, m, true, pulse, kind === 'p');
+    else {
+      if (amt < 1) blit(c, pipeSprite(m, false, kind === 'p'));
+      if (amt > 0) { c.globalAlpha = amt; blit(c, pipeSprite(m, true, kind === 'p')); c.globalAlpha = 1; }
     }
-    ctx.restore();
+    if (kind === 'c') blit(c, sprite('core', drawCore));
+    else if (kind === 'l' && amt < 1) { if (angle) c.rotate(-angle); lanternBody(c, false); }
+    c.restore();
+  }
+  // lit lanterns flicker, so they are drawn on top of the back canvas
+  function drawLitLantern(c, i, now) {
+    const amt = fxAmt[i];
+    if (!amt) return;
+    const x = i % size, y = (i / size) | 0, pop = fxPop[i] || 1;
+    const flick = 1 + (reduced ? 0 : Math.sin(now / 260 + i) * 0.06) + (fxPulse[i] || 0) * 0.4;
+    c.save();
+    c.translate((x + 0.5) * cell, (y + 0.5) * cell);
+    c.globalAlpha = amt;
+    c.save(); c.scale(flick * pop, flick * pop); blit(c, sprite('glow', drawGlow)); c.restore();
+    if (pop !== 1) c.scale(pop, pop);
+    lanternBody(c, true);
+    c.restore();
   }
 
+  let rafId = 0, tickId = 0, dirty = true, animUntil = 0;
+  function wake() {
+    dirty = true;
+    if (tickId) { clearTimeout(tickId); tickId = 0; }
+    if (!rafId) rafId = requestAnimationFrame(frame);
+  }
   function frame(now) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < tiles.length; i++) drawTile(i, now);
-    if (startTime && !solved) el('time').textContent = fmtTime(now - startTime);
-    else if (solved) el('time').textContent = fmtTime(endTime - startTime);
-    else el('time').textContent = '0:00';
-    requestAnimationFrame(frame);
+    rafId = 0;
+    if (!tiles) return;
+    const animating = now < animUntil;
+    if (dirty || animating) {
+      dirty = animating; // one more full frame after an animation ends
+      sctx.clearRect(0, 0, scv.width, scv.height);
+      for (let i = 0; i < tiles.length; i++) drawTile(sctx, i, now);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(scv, 0, 0);
+      for (const i of lanterns) if (litSet.has(i)) drawLitLantern(ctx, i, now);
+    } else if (!reduced) {
+      // idle: redraw only the lit lantern cells for the flicker
+      for (const i of lanterns) {
+        if (!litSet.has(i)) continue;
+        const x = i % size, y = (i / size) | 0;
+        const x0 = Math.floor(x * cell), y0 = Math.floor(y * cell);
+        const w = Math.min(canvas.width, Math.ceil((x + 1) * cell)) - x0, h = Math.min(canvas.height, Math.ceil((y + 1) * cell)) - y0;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
+        ctx.clearRect(x0, y0, w, h);
+        ctx.drawImage(scv, x0, y0, w, h, x0, y0, w, h);
+        drawLitLantern(ctx, i, now);
+        ctx.restore();
+      }
+    }
+    setText('time', fmtTime(elapsedNow(now)));
+    if (paused) return;
+    if (animating || dirty) { rafId = requestAnimationFrame(frame); return; }
+    // idle: a slow tick for the flicker and the clock, or nothing at all
+    let delay = Infinity;
+    if (!reduced && lanterns.some(i => litSet.has(i))) delay = 80;
+    if (runStart) delay = Math.min(delay, 1005 - (elapsedNow(now) % 1000));
+    if (delay < Infinity) tickId = setTimeout(() => { tickId = 0; if (!rafId) rafId = requestAnimationFrame(frame); }, delay);
+  }
+
+  function fadeBoard() {
+    if (reduced || !booted) return;
+    canvas.classList.remove('fadein'); void canvas.offsetWidth; canvas.classList.add('fadein');
   }
 
   // Input
@@ -469,54 +707,120 @@
     if (x < 0 || y < 0 || x >= size || y >= size) return -1;
     return y * size + x;
   }
-  canvas.addEventListener('click', ev => { const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, 1); } });
-  canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, -1); } });
-  canvas.addEventListener('mousemove', ev => { hover = cellAt(ev); });
-  canvas.addEventListener('mouseleave', () => { hover = -1; });
+  // Long-press on touch turns a tile counter-clockwise
+  let lp = null, lpFired = 0, lastTouch = 0;
+  function cancelLP() { if (lp && lp.timer) clearTimeout(lp.timer); lp = null; }
+  canvas.addEventListener('touchstart', ev => {
+    lastTouch = Date.now();
+    cancelLP();
+    if (ev.touches.length !== 1) return;
+    const t = ev.touches[0], i = cellAt(t);
+    if (i < 0) return;
+    const p = { x: t.clientX, y: t.clientY, i, timer: 0 };
+    p.timer = setTimeout(() => {
+      p.timer = 0; lpFired = Date.now(); cursor = p.i; rotate(p.i, -1);
+      if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) { try { navigator.vibrate(15); } catch (e) {} }
+    }, 400);
+    lp = p;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', ev => {
+    lastTouch = Date.now();
+    if (!lp || !lp.timer) return;
+    const t = ev.touches[0];
+    if (t && Math.hypot(t.clientX - lp.x, t.clientY - lp.y) > 10) cancelLP();
+  }, { passive: true });
+  canvas.addEventListener('touchend', ev => {
+    lastTouch = Date.now();
+    const fired = lp && !lp.timer;
+    cancelLP();
+    if (fired && ev.cancelable) ev.preventDefault(); // no click after a long-press
+  });
+  canvas.addEventListener('touchcancel', cancelLP);
+  canvas.addEventListener('click', ev => {
+    if (Date.now() - lpFired < 700) return;
+    const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, 1); }
+  });
+  canvas.addEventListener('contextmenu', ev => {
+    ev.preventDefault();
+    if (Date.now() - lastTouch < 1000) return; // touch long-press is handled above
+    const i = cellAt(ev); if (i >= 0) { cursor = i; rotate(i, -1); }
+  });
+  canvas.addEventListener('mousemove', ev => { const h = cellAt(ev); if (h !== hover) { hover = h; wake(); } });
+  canvas.addEventListener('mouseleave', () => { if (hover !== -1) { hover = -1; wake(); } });
+  canvas.addEventListener('focus', wake);
+  canvas.addEventListener('blur', wake);
   document.addEventListener('keydown', ev => {
     if (helpOv.classList.contains('show')) { if (ev.key === 'Escape' || ev.key === 'Enter') { closeHelp(); ev.preventDefault(); } return; }
+    const ae = document.activeElement;
+    const onBoard = !ae || ae === canvas || ae === document.body || ae === document.documentElement;
+    if (winOv.classList.contains('show') && ev.key === 'Enter' && onBoard) { el('nextBtn').click(); ev.preventDefault(); return; }
     const k = ev.key.toLowerCase();
-    if (k === 'z' && !ev.metaKey) { undo(); ev.preventDefault(); return; }
-    if ((ev.metaKey || ev.ctrlKey) && k === 'z') { undo(); ev.preventDefault(); return; }
-    if (k === 'r' && !ev.metaKey && !ev.ctrlKey) { startLevel(level, true); return; }
-    if (document.activeElement !== canvas) return;
+    if (k === 'z' && !ev.altKey) { undo(); ev.preventDefault(); return; }
+    if (k === 'r' && !ev.metaKey && !ev.ctrlKey && !ev.altKey) { pressRestart(); return; }
     const n = size; let x = cursor % n, y = (cursor / n) | 0;
     switch (ev.key) {
       case 'ArrowUp': y = Math.max(0, y - 1); break;
       case 'ArrowDown': y = Math.min(n - 1, y + 1); break;
       case 'ArrowLeft': x = Math.max(0, x - 1); break;
       case 'ArrowRight': x = Math.min(n - 1, x + 1); break;
-      case ' ': case 'Enter': rotate(cursor, ev.shiftKey ? -1 : 1); ev.preventDefault(); return;
+      case ' ': case 'Enter':
+        if (!onBoard) return;
+        if (ae !== canvas) canvas.focus({ preventScroll: true });
+        rotate(cursor, ev.shiftKey ? -1 : 1); ev.preventDefault(); return;
       default: return;
     }
     ev.preventDefault();
+    if (ae !== canvas) canvas.focus({ preventScroll: true });
     cursor = y * n + x;
+    wake();
   });
 
-  function closeHelp() { helpOv.classList.remove('show'); store.set('seenHelp', true); canvas.focus(); }
-  el('helpBtn').addEventListener('click', () => helpOv.classList.add('show'));
+  function openHelp() { helpOv.classList.add('show'); setPaused(); el('helpClose').focus(); }
+  function closeHelp() { helpOv.classList.remove('show'); store.set('seenHelp', true); setPaused(); canvas.focus({ preventScroll: true }); }
+  el('helpBtn').addEventListener('click', openHelp);
   el('helpClose').addEventListener('click', closeHelp);
   el('nextBtn').addEventListener('click', () => startLevel(level + 1, false));
   el('replayBtn').addEventListener('click', () => startLevel(level, true));
-  el('skipBtn').addEventListener('click', () => startLevel(level + 1, false));
+  el('skipBtn').addEventListener('click', () => { if (solved || solvedBefore) startLevel(level + 1, false); });
   el('prevBtn').addEventListener('click', () => { if (level > 1) startLevel(level - 1, false); });
-  el('resetBtn').addEventListener('click', () => startLevel(level, true));
+  el('resetBtn').addEventListener('click', pressRestart);
   el('undoBtn').addEventListener('click', undo);
-  function paintSound() { el('soundBtn').textContent = soundOn ? '🔊' : '🔇'; el('soundBtn').setAttribute('aria-pressed', String(soundOn)); }
+  const SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
+  const ICON_ON = SVG + '<path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+  const ICON_OFF = SVG + '<path d="M17 9.5l5 5M22 9.5l-5 5"/></svg>';
+  function paintSound() {
+    const b = el('soundBtn');
+    b.innerHTML = soundOn ? ICON_ON : ICON_OFF;
+    b.setAttribute('aria-pressed', String(soundOn));
+    b.title = soundOn ? 'Sound on (click to mute)' : 'Sound off (click to unmute)';
+  }
   el('soundBtn').addEventListener('click', () => { soundOn = !soundOn; store.set('sound', soundOn); paintSound(); });
   paintSound();
   window.addEventListener('resize', layout);
   if (window.ResizeObserver) new ResizeObserver(layout).observe(el('main'));
+  document.addEventListener('visibilitychange', setPaused);
+  window.addEventListener('pagehide', saveCur);
+  if (rmq) {
+    const onMotion = () => { reduced = rmq.matches; anim = {}; litAt.clear(); animUntil = 0; wake(); };
+    if (rmq.addEventListener) rmq.addEventListener('change', onMotion); else if (rmq.addListener) rmq.addListener(onMotion);
+  }
 
+  const savedCur = store.get('cur', null);
   startLevel(level, false);
+  if (savedCur && restoreCur(savedCur)) saveCur();
   if (!store.get('seenHelp', false)) helpOv.classList.add('show');
-  requestAnimationFrame(frame);
+  setPaused();
+  if (helpOv.classList.contains('show')) el('helpClose').focus(); else canvas.focus({ preventScroll: true });
+  booted = true;
 
-  // Hooks for automated testing
-  window.LanternLinks = {
-    solve() { tiles = solution.slice(); update(); },
-    state() { return { level, size, moves, par, solved, lit: litSet.size, total: tiles.length }; },
-  };
+  // Hooks for automated testing, only on a local copy
+  const host = location.hostname;
+  if (location.protocol === 'file:' || host === 'localhost' || host === '127.0.0.1') {
+    window.LanternLinks = {
+      solve() { tiles = solution.slice(); update(); },
+      state() { return { level, size, moves, par, solved, lit: litSet.size, total: tiles.length, undosLeft, time: Math.round(elapsedNow()), paused }; },
+    };
+  }
 })();
 </script>
 </body>
