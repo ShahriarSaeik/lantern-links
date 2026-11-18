@@ -2,7 +2,7 @@
 
 A small, original light-routing puzzle for the browser. Rotate the tiles to carry light from the glowing core to every lantern.
 
-**▶ Play it free:** on [WebGame.fun](https://webgame.fun/), a site with free browser games (no download or sign-up). It is also playable on this repository's GitHub Pages site.
+**▶ Play it free:** on [WebGame.fun](https://webgame.fun/), a site with free browser games (no download or sign-up). It is also playable on this repository's GitHub Pages site and on [itch.io](https://webgamefun.itch.io/lantern-links).
 
 ## How to play
 - **Tap or click** a tile to turn it clockwise. **Right-click**, or a **long-press** on a phone, turns it counter-clockwise.
