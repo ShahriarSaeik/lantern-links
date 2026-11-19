@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Lantern Links 1.7 -->
+<!-- Lantern Links 1.7.1 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -81,7 +81,9 @@
   }
   /* the 28px gap sits only between the board and the panel (keep in step with GAP in layout()).
      One rhythm in the panel: 12px between blocks, 10px between Undo and Restart, 16px before the footer. */
-  body.land main { padding: 0 28px 0 0; }
+  /* overflow stays visible here so the board's 3px gold frame (a box-shadow) is not cut off on the left;
+     layout() always leaves at least 24px beside the board in this layout */
+  body.land main { padding: 0 28px 0 0; overflow: visible; }
   body.land header { padding: 0 0 12px; gap: 12px; max-width: none; margin: 0; }
   body.land .titlerow { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; column-gap: 0; }
   body.land .titlerow h1 { grid-column: 1 / -1; grid-row: 1; text-align: center; font-size: 1.45rem; }
@@ -249,7 +251,7 @@
 <script>
 (() => {
   'use strict';
-  const VERSION = '1.7';
+  const VERSION = '1.7.1';
   const N = 1, E = 2, S = 4, W = 8;
   const DIRS = [
     { bit: N, dx: 0, dy: -1, opp: S },

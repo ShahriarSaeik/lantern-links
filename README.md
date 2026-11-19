@@ -43,6 +43,7 @@ Logo lettering based on Fredoka, SIL Open Font License.
 - **1.5 (2026-11-15):** bug fixes (Lit counts tiles, no stray win card, side panel fits at 800×600, timer and sound pause when hidden or in help, Restart asks once, Next only after a solve, a message when undos run out, reduced-motion support) and nicer feel: the board in progress survives a reload, long-press turns a tile back, light spreads along the path, and the board redraws only when something changes.
 - **1.6 (2026-11-15):** the board shape now fits the screen (for example 4×6 on a phone and 5×4 on a wide screen), so less space is left empty. New controls: large Undo and Restart buttons with an undo badge, level arrows with the level's stars, Moves, Lit and Time tiles, a book button for how to play and a full screen button.
 - **1.7 (2026-11-16):** new look for the board: pipes drawn as round tubes, lanterns with a glass body and a small flickering flame when lit, and a warmer glow. The title is now a logo with a small lantern, and the lantern is also the page icon. Small tiles are drawn with less detail so they stay clear. The rules, levels and saves are unchanged.
+- **1.7.1 (2026-11-19):** the board's gold frame now shows on the left edge too in the wide (landscape) layout.
 - **1.1 (2026-11-14):**
   - The board is now centred and sized to the largest square that fits any screen or iframe.
   - Added undo, par and star ratings, a timer, sound with a mute button, a how-to-play card and a win animation.
