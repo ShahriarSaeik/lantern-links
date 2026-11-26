@@ -130,6 +130,7 @@
   button:hover { background: var(--btn-hover); }
   button:disabled { opacity: .45; cursor: default; }
   button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  html.mouse button:focus-visible { outline: none; } /* ring only for keyboard players */
   button.primary { background: var(--accent); color: #2a1a00; font-weight: 600; }
   button.primary:hover { background: #ffd47a; }
   /* Game buttons: soft gradient, lighter edge, a 3px press */
@@ -168,6 +169,19 @@
   .card li b { color: var(--text); }
   .stars { font-size: 1.8rem; letter-spacing: 4px; margin: 2px 0 6px; color: #4a5190; }
   .stars .on { color: var(--accent); text-shadow: 0 0 10px rgba(255,200,87,.6); }
+  #winOv .card { text-align: center; width: 100%; max-width: 300px; }
+  #winOv h2 { margin: 0 0 2px; font-size: 1.4rem; text-shadow: 0 0 14px rgba(255,200,87,.35); }
+  .wkick { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  #winOv .wmsg { color: var(--text); margin: 2px 0 10px; font-size: .95rem; }
+  .wstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 10px; }
+  .wstats div { background: var(--bg2); border-radius: 10px; padding: 7px 0 6px; }
+  .wstats small { display: block; font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .wstats b { font-size: 1.15rem; color: var(--text); font-variant-numeric: tabular-nums; }
+  .wstats { margin-bottom: 14px; }
+  .wbest { margin: -4px 0 14px; font-size: .8rem; color: var(--muted); }
+  .wbest:empty { display: none; }
+  #winOv .row button { flex: 1; }
+  .wbest.new { display: inline-block; min-height: 0; padding: 3px 12px; border-radius: 99px; background: rgba(255,200,87,.15); color: var(--accent); font-weight: 600; }
   @media (max-width: 380px), (max-height: 680px) { .card { padding: 14px 14px; } .card ul { font-size: .84rem; line-height: 1.4; margin-bottom: 10px; } }
   /* How-to-play card */
   .card.help { max-width: 360px; width: 100%; max-height: 100%; padding: 20px 20px 18px; text-align: left; display: flex; flex-direction: column;
@@ -260,9 +274,16 @@
     <canvas id="board" tabindex="0" aria-label="Puzzle board. Arrow keys move, Space or Enter rotates, Z undoes."></canvas>
     <div class="overlay" id="winOv" role="dialog" aria-modal="true" aria-labelledby="winTitle">
       <div class="card">
-        <h2 id="winTitle">Whole board lit!</h2>
+        <div class="wkick" id="winLvl"></div>
+        <h2 id="winTitle">All lanterns lit!</h2>
         <div class="stars" id="stars" aria-hidden="true"></div>
-        <p id="winText"></p>
+        <p class="wmsg" id="winMsg"></p>
+        <div class="wstats">
+          <div><small>Moves</small><b id="wMoves">0</b></div>
+          <div><small>Par</small><b id="wPar">0</b></div>
+          <div><small>Time</small><b id="wTime">0:00</b></div>
+        </div>
+        <div class="wbest" id="winBest"></div>
         <div class="row">
           <button id="replayBtn">Replay</button>
           <button class="primary" id="nextBtn">Next level</button>
@@ -333,7 +354,7 @@
 <script>
 (() => {
   'use strict';
-  const VERSION = '1.9';
+  const VERSION = '1.9.1';
   const N = 1, E = 2, S = 4, W = 8;
   const DIRS = [
     { bit: N, dx: 0, dy: -1, opp: S },
@@ -573,8 +594,17 @@
       winTimer = setTimeout(() => {
         winTimer = 0;
         el('stars').innerHTML = [1, 2, 3].map(k => '<span class="' + (k <= st ? 'on' : '') + '">★</span>').join('');
-        el('winText').textContent = mv + ' move' + (mv === 1 ? '' : 's') + ' (par ' + par + ') in ' + fmtTime(tm) +
-          '. Best on this level: ' + (b => b + ' move' + (b === 1 ? '' : 's'))(Math.min(mv, best === null ? mv : best)) + '.';
+        const plural = n => n + ' move' + (n === 1 ? '' : 's');
+        setText('winLvl', 'Level ' + level);
+        setText('winTitle', st === 3 ? 'Perfect glow!' : st === 2 ? 'Nicely lit!' : 'All lanterns lit!');
+        setText('winMsg', st === 3 ? (mv < par ? 'Under par by ' + plural(par - mv) + '!' : 'Right on par.')
+          : st === 2 ? plural(mv - par) + ' over par. Replay for 3 stars?'
+          : 'Finish in ' + plural(par) + ' for 3 stars.');
+        setText('wMoves', mv); setText('wPar', par); setText('wTime', fmtTime(tm));
+        const wb = el('winBest');
+        wb.className = 'wbest' + (best !== null && mv < best ? ' new' : '');
+        wb.textContent = best === null ? '' : mv < best ? '★ New best' : 'Your best: ' + plural(best);
+        setText('replayBtn', st === 3 ? 'Replay' : 'Try again');
         winOv.classList.add('show');
         el('announce').textContent = 'Level ' + level + ' solved in ' + mv + ' move' + (mv === 1 ? '' : 's') + '. ' + st + ' of 3 stars.';
         el('nextBtn').focus({ preventScroll: true });
@@ -1167,6 +1197,9 @@
   canvas.addEventListener('mousemove', ev => { const h = cellAt(ev); if (h !== hover) { hover = h; wake(); } });
   canvas.addEventListener('mouseleave', () => { if (hover !== -1) { hover = -1; wake(); } });
   canvas.addEventListener('focus', wake);
+  // last input type: a pointer hides the focus ring on buttons the game focuses itself (the win card's Next level)
+  addEventListener('pointerdown', () => document.documentElement.classList.add('mouse'), true);
+  addEventListener('keydown', () => document.documentElement.classList.remove('mouse'), true);
   canvas.addEventListener('blur', wake);
   document.addEventListener('keydown', ev => {
     const ae = document.activeElement;

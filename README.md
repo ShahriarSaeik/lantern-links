@@ -25,7 +25,7 @@ A small, original light-routing puzzle for the browser. Rotate the tiles to carr
 
 ## Tech
 - One `index.html` file with plain JavaScript, Canvas 2D and Web Audio.
-- No libraries, no build step, no tracking. About 82 KB.
+- No libraries, no build step, no tracking. About 85 KB.
 - Works on phones, tablets and desktops, and can be embedded in an iframe.
 
 ## Run locally
@@ -45,6 +45,7 @@ Logo lettering based on Fredoka, SIL Open Font License.
 - **1.7 (2026-11-16):** new look for the board: pipes drawn as round tubes, lanterns with a glass body and a small flickering flame when lit, and a warmer glow. The title is now a logo with a small lantern, and the lantern is also the page icon. Small tiles are drawn with less detail so they stay clear. The rules, levels and saves are unchanged.
 - **1.7.1 (2026-11-19):** the board's gold frame now shows on the left edge too in the wide (landscape) layout.
 - **1.8 (2026-11-22):** a new "How to play" card: four short steps, each with a small picture, plus the level arrows and key shortcuts underneath (keys are shown only on devices with a keyboard). It shrinks to fit short screens. The rules, levels and saves are unchanged.
+- **1.9.1 (2026-11-26):** a clearer win card. It shows the level number, a title that matches your stars (Perfect glow!, Nicely lit!, All lanterns lit!), a short line on how you did against par, Moves, Par and Time in three boxes, and a New best badge when you beat your record. Below three stars the Replay button reads Try again. The focus ring on Next level now shows only when you play with the keyboard.
 - **1.9 (2026-11-26):** bug fixes. Par is now fair: a turn back counts as one move, so par is lower on most levels (best moves and stars you already have are kept). Levels 1 to 5 are small on every screen (about 9 to 20 tiles). Winning a level no longer scrolls the page the game is embedded in, and the game no longer takes the keyboard from that page until you click it. The level arrows ask before they throw away a board with moves, like Restart does. Holding R or Z no longer skips the Restart question or uses up all undos. Screen readers no longer read the timer every second, and the win is announced. The how-to card fits short screens (its text scrolls, the Play button stays in view), very small and very short windows stay usable, odd saved data can no longer show "NaN", the flame flicker stops behind the win card, and buttons no longer zoom on a double tap on iPhone.
 - **1.1 (2026-11-14):**
   - The board is now centred and sized to the largest square that fits any screen or iframe.
