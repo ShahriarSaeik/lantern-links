@@ -10,14 +10,14 @@ A small, original light-routing puzzle for the browser. Rotate the tiles to carr
 - A level is solved when every tile is part of one lit network and all lanterns glow.
 - **Undo** with the button or the **Z** key, up to 3 times per level. A small badge on the button shows how many are left. **Restart** (or **R**) scrambles the level again (if you have made moves, press it twice).
 - The arrows beside the level number go to the previous or next level. Next works once the level is solved.
-- Each level has a **par**: the number of clockwise taps that solve it from the starting position. Finish within par for three stars.
-- Levels never run out. The board gets bigger as you progress, from 16 tiles at the start to about 100 to 150. Its shape fits your screen: taller on a phone, wider on a computer. Your level, best moves, stars and the board you are working on are saved in your browser.
+- Each level has a **par**: the number of turns that solve it from the starting position, where a turn back (right-click or long-press) counts as one move. Finish within par for three stars.
+- Levels never run out. The board gets bigger as you progress, from 9 to 12 tiles on level 1 up to 120 tiles. Its shape fits your screen: taller on a phone, wider on a computer. Your level, best moves, stars and the board you are working on are saved in your browser.
 - Small sound effects are made in the browser with Web Audio, with no audio files. The speaker button mutes them.
 - The book button shows a short how-to card. Where the browser allows it, a full screen button is shown too.
 
 ## How the levels are made
 - When a level starts, the game picks the number of columns and rows. The tile count stays close to a target for that level, and the shape is the one whose square tiles fill the free space best.
-- Each level is a random **spanning tree** on the grid, built with a randomised depth-first search from the centre tile.
+- Each level is a random **spanning tree** on the grid, grown from the centre tile (a growing-tree search: a mix of depth-first and random steps).
 - A spanning tree connects every cell with no loops, so every level is guaranteed to have a solution.
 - Lanterns are the leaves of the tree (tiles with a single connection).
 - Each tile is then turned a random number of quarter turns.
@@ -25,7 +25,7 @@ A small, original light-routing puzzle for the browser. Rotate the tiles to carr
 
 ## Tech
 - One `index.html` file with plain JavaScript, Canvas 2D and Web Audio.
-- No libraries, no build step, no tracking. About 71 KB.
+- No libraries, no build step, no tracking. About 82 KB.
 - Works on phones, tablets and desktops, and can be embedded in an iframe.
 
 ## Run locally
@@ -45,6 +45,7 @@ Logo lettering based on Fredoka, SIL Open Font License.
 - **1.7 (2026-11-16):** new look for the board: pipes drawn as round tubes, lanterns with a glass body and a small flickering flame when lit, and a warmer glow. The title is now a logo with a small lantern, and the lantern is also the page icon. Small tiles are drawn with less detail so they stay clear. The rules, levels and saves are unchanged.
 - **1.7.1 (2026-11-19):** the board's gold frame now shows on the left edge too in the wide (landscape) layout.
 - **1.8 (2026-11-22):** a new "How to play" card: four short steps, each with a small picture, plus the level arrows and key shortcuts underneath (keys are shown only on devices with a keyboard). It shrinks to fit short screens. The rules, levels and saves are unchanged.
+- **1.9 (2026-11-26):** bug fixes. Par is now fair: a turn back counts as one move, so par is lower on most levels (best moves and stars you already have are kept). Levels 1 to 5 are small on every screen (about 9 to 20 tiles). Winning a level no longer scrolls the page the game is embedded in, and the game no longer takes the keyboard from that page until you click it. The level arrows ask before they throw away a board with moves, like Restart does. Holding R or Z no longer skips the Restart question or uses up all undos. Screen readers no longer read the timer every second, and the win is announced. The how-to card fits short screens (its text scrolls, the Play button stays in view), very small and very short windows stay usable, odd saved data can no longer show "NaN", the flame flicker stops behind the win card, and buttons no longer zoom on a double tap on iPhone.
 - **1.1 (2026-11-14):**
   - The board is now centred and sized to the largest square that fits any screen or iframe.
   - Added undo, par and star ratings, a timer, sound with a mute button, a how-to-play card and a win animation.

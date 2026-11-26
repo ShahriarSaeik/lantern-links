@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Lantern Links 1.8 -->
+<!-- Lantern Links 1.9 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -23,8 +23,13 @@
     grid-template-areas: "header" "main" "controls" "footer";
     height: 100vh; height: 100dvh;
     -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation; /* no double-tap zoom on buttons (iOS) */
   }
   [hidden] { display: none !important; }
+  /* set by layout() only when the page does not fit the screen (for example 1300x250) */
+  html.overflowy { overflow-y: auto; }
+  html.overflowy body { height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   /* --bw is the board width (set by layout()); header and buttons take the same width so all edges line up */
   header {
     grid-area: header;
@@ -165,7 +170,7 @@
   .stars .on { color: var(--accent); text-shadow: 0 0 10px rgba(255,200,87,.6); }
   @media (max-width: 380px), (max-height: 680px) { .card { padding: 14px 14px; } .card ul { font-size: .84rem; line-height: 1.4; margin-bottom: 10px; } }
   /* How-to-play card */
-  .card.help { max-width: 360px; width: 100%; padding: 20px 20px 18px; text-align: left;
+  .card.help { max-width: 360px; width: 100%; max-height: 100%; padding: 20px 20px 18px; text-align: left; display: flex; flex-direction: column;
     background: linear-gradient(180deg, #2a3063 0%, var(--panel) 60%); border: 1px solid rgba(124,134,218,.28); }
   .card.help h2 { text-align: center; font-size: 1.4rem; margin: 0; text-shadow: 0 0 14px rgba(255,200,87,.35); }
   .help-lead { text-align: center; margin: 2px 0 14px !important; color: var(--text) !important; opacity: .85; }
@@ -183,7 +188,10 @@
   kbd { font: 600 .72rem/1 system-ui, sans-serif; color: var(--text); background: var(--btn); border: 1px solid #4a5190;
     border-bottom-width: 2px; border-radius: 5px; padding: 3px 6px; }
   @media (hover: none) and (pointer: coarse) { .help-tips .keys { display: none; } }
-  .help-play { display: block; width: 100%; padding: 11px 0; font-size: 1rem; border-radius: 10px; }
+  .help-body { min-height: 0; flex: 0 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+  .help-play { display: block; flex: none; width: 100%; padding: 11px 0; font-size: 1rem; border-radius: 10px; }
+  /* set by fitHelp() when the board is too short for the card: the card uses the whole window */
+  #helpOv.full { position: fixed; border-radius: 0; z-index: 10; }
   @media (max-width: 380px), (max-height: 680px) {
     .card.help { padding: 14px 12px 12px; }
     .help-lead { margin-bottom: 8px !important; }
@@ -214,6 +222,8 @@
   button svg { display: block; width: 18px; height: 18px; flex: none; color: var(--accent); }
   #resetBtn.armed, #resetBtn.armed:hover { background: var(--accent2); border-color: #ffb27a; color: #2a1a00; }
   #resetBtn.armed svg { color: #2a1a00; }
+  .arrow.armed, .arrow.armed:hover { background: var(--accent2); border-color: #ffb27a; }
+  .arrow.armed svg { color: #2a1a00; }
   .stars span { display: inline-block; animation: starIn .35s ease-out both; }
   .stars span:nth-child(2) { animation-delay: .18s; }
   .stars span:nth-child(3) { animation-delay: .36s; }
@@ -239,7 +249,7 @@
     <div class="lvinfo"><span class="lvtxt">Level <b id="lvl">1</b></span><span class="lvstars" id="lvStars" role="img" aria-label="No stars yet"></span></div>
     <button class="arrow" id="skipBtn" title="Solve this level first" aria-label="Next level" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
   </div>
-  <div class="stats" aria-live="polite">
+  <div class="stats">
     <div>Moves <b><span id="moves">0</span><small>/<span id="par">0</span></small></b></div>
     <div>Lit <b id="lit">0/0</b></div>
     <div>Time <b id="time">0:00</b></div>
@@ -262,6 +272,7 @@
     <div class="overlay" id="helpOv" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
       <div class="card help">
         <h2 id="helpTitle">How to play</h2>
+        <div class="help-body" id="helpBody">
         <p class="help-lead">Light up the whole board.</p>
         <ol class="steps">
           <li>
@@ -296,17 +307,19 @@
               <rect x="4" y="4" width="40" height="40" rx="9" fill="#2a3063"/>
               <path d="M24 9 l4 8.2 9 1.3 -6.5 6.3 1.5 9 -8-4.2 -8 4.2 1.5-9 -6.5-6.3 9-1.3z" fill="#ffc857" stroke="#ff9d2e" stroke-width="1.5" stroke-linejoin="round"/>
             </svg>
-            <div><b>Beat par</b> for three stars.<span>You get 3 undos per level.</span></div>
+            <div><b>Finish within par</b> for three stars.<span>A turn back counts as one move. You get 3 undos per level.</span></div>
           </li>
         </ol>
         <div class="help-tips">
           <p>The arrows beside the level number change level. Next opens after a solve.</p>
-          <p class="keys"><kbd>Arrows</kbd> move <kbd>Space</kbd> turn <kbd>Z</kbd> undo <kbd>R</kbd> restart</p>
+          <p class="keys"><kbd>Arrows</kbd> move <kbd>Space</kbd> turn <kbd>Shift</kbd>+<kbd>Space</kbd> turn back <kbd>Z</kbd> undo <kbd>R</kbd> restart</p>
+        </div>
         </div>
         <button class="primary help-play" id="helpClose">Play</button>
       </div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="sr-only" id="announce" role="status" aria-live="polite"></div>
   </div>
 </main>
 <div class="controls">
@@ -320,7 +333,7 @@
 <script>
 (() => {
   'use strict';
-  const VERSION = '1.8';
+  const VERSION = '1.9';
   const N = 1, E = 2, S = 4, W = 8;
   const DIRS = [
     { bit: N, dx: 0, dy: -1, opp: S },
@@ -344,6 +357,8 @@
     get(k, d) { try { const v = localStorage.getItem('lanternlinks.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem('lanternlinks.' + k, JSON.stringify(v)); } catch (e) {} },
     del(k) { try { localStorage.removeItem('lanternlinks.' + k); } catch (e) {} },
+    // a whole number in [lo, hi], otherwise d (old or edited data cannot show NaN)
+    int(k, d, lo, hi) { const v = this.get(k, null); return typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi ? v : d; },
   };
 
   const canvas = document.getElementById('board');
@@ -354,31 +369,47 @@
   // Undo is limited to MAX_UNDO uses per level
   const MAX_UNDO = 3;
   let undosLeft = MAX_UNDO;
-  let level = Math.max(1, store.get('level', 1) | 0);
+  let level = (v => Number.isFinite(v) ? Math.min(1e6, Math.max(1, Math.floor(v))) : 1)(+store.get('level', 1));
   let untouched = false, refitTimer = 0;
   let cols = 0, rows = 0, tiles, solution, source, moves, par, anim, cursor, solved, litSet, history, solvedAt, lastLitCount;
   let elapsed = 0, runStart = 0, started = false, solvedBefore = false, winTimer = 0, lanterns = [], booted = false;
   const rmq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   let reduced = !!(rmq && rmq.matches);
-  let soundOn = store.get('sound', true);
+  let soundOn = store.get('sound', true) !== false;
+  // embedded in another page (such as the site's iframe): do not take keyboard focus until the player clicks the game
+  const embedded = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
 
   function sizeFor(lv) { return Math.min(4 + Math.floor((lv - 1) / 3), 10); }
 
-  // Board shape: the tile count stays near the old square board for the level
-  // (16, 25, ... 100, up to 1.5 times that), and the columns and rows are picked
-  // so that square tiles fill the free space best. Ties go to fewer tiles.
+  // Tile count for a level: small fixed sizes for a gentle start (levels 1-5), then
+  // near the old square board for the level (25, 36, ... 100, up to 1.5 times that).
+  function tileRange(lv) {
+    if (lv <= 1) return [9, 12];
+    if (lv <= 3) return [12, 16];
+    if (lv <= 5) return [16, 20];
+    const k = sizeFor(lv);
+    return [k * k, Math.floor(k * k * 1.5)];
+  }
+  // Board shape: the columns and rows are picked so that square tiles fill the free
+  // space best. Ties go to fewer tiles. On a very small screen, tiles stay at least
+  // MIN_TILE px, using fewer tiles than the level asks for if needed.
+  const MIN_TILE = 24;
   function chooseShape(lv, w, h) {
-    const k = sizeFor(lv), lo = k * k, hi = Math.floor(lo * 1.5);
-    let best = null;
-    if (!(w > 0 && h > 0)) return { c: k, r: k };
-    for (let c = 3; c <= 12; c++) for (let r = 3; r <= 12; r++) {
-      if (Math.min(c, r) > 10) continue;
-      const n = c * r;
-      if (n < lo || n > hi) continue;
-      const t = Math.min(w / c, h / r), fill = n * t * t / (w * h);
-      if (!best || fill > best.fill + 0.005 || (fill > best.fill - 0.005 && n < best.n)) best = { c, r, n, fill };
-    }
-    return best || { c: k, r: k };
+    const [lo, hi] = tileRange(lv);
+    if (!(w > 0 && h > 0)) { const k = lv <= 1 ? 3 : lv <= 5 ? 4 : sizeFor(lv); return { c: k, r: k }; }
+    const pick = (a, b, minT) => {
+      let best = null;
+      for (let c = 3; c <= 12; c++) for (let r = 3; r <= 12; r++) {
+        if (Math.min(c, r) > 10) continue;
+        const n = c * r;
+        if (n < a || n > b) continue;
+        const t = Math.min(w / c, h / r), fill = n * t * t / (w * h);
+        if (t < minT) continue;
+        if (!best || fill > best.fill + 0.005 || (fill > best.fill - 0.005 && n < best.n)) best = { c, r, n, fill };
+      }
+      return best;
+    };
+    return pick(lo, hi, MIN_TILE) || pick(9, lo - 1, MIN_TILE) || pick(lo, hi, 0) || { c: 3, r: 3 };
   }
 
   // Random spanning tree: one connected network with no loops, so every level is solvable.
@@ -412,15 +443,18 @@
     return rnd;
   }
 
-  // Fewest clockwise taps that turn tile m into target t
+  // Clockwise taps that turn tile m into target t (0-3)
   function tapsTo(m, t) { for (let k = 0; k < 4; k++) { if (m === t) return k; m = rotCW(m); } return 0; }
+  // Par: a tile that needs 3 clockwise taps takes 1 turn back (right-click or long-press)
+  const parOf = (b, sol) => b.reduce((s, m, i) => { const k = tapsTo(m, sol[i]); return s + Math.min(k, 4 - k); }, 0);
+  const oldParOf = (b, sol) => b.reduce((s, m, i) => s + tapsTo(m, sol[i]), 0); // par before 1.9 (clockwise taps only)
 
   function scramble(rnd) {
     tiles = solution.map(m => { let t = m; const r = Math.floor(rnd() * 4); for (let i = 0; i < r; i++) t = rotCW(t); return t; });
     if (computeLit().size === tiles.length) {
       for (let i = 0; i < tiles.length; i++) { if (rotCW(tiles[i]) !== tiles[i]) { tiles[i] = rotCW(tiles[i]); break; } }
     }
-    par = tiles.reduce((s, m, i) => s + tapsTo(m, solution[i]), 0);
+    par = parOf(tiles, solution);
   }
 
   // shape: {c, r} to use, otherwise Restart keeps the current shape and a new level fits the screen
@@ -438,11 +472,11 @@
     scramble(reshuffle ? mulberry32((Date.now() & 0x7fffffff) ^ (lv * 31)) : rnd);
     moves = 0; solved = false; anim = {}; history = []; undosLeft = MAX_UNDO;
     elapsed = 0; runStart = 0; started = false; solvedAt = 0;
-    solvedBefore = store.get('stars.' + lv, null) !== null;
+    solvedBefore = store.int('stars.' + lv, null, 1, 3) !== null || store.int('best.' + lv, null, 0, 1e7) !== null;
     lanterns = [];
     for (let i = 0; i < solution.length; i++) if (isLantern(i)) lanterns.push(i);
     cursor = source;
-    winOv.classList.remove('show');
+    winOv.classList.remove('show'); el('announce').textContent = '';
     litSet = null; litAt.clear();
     update(true);
     layout();
@@ -527,9 +561,9 @@
       store.del('cur'); disarmRestart();
       el('undoBtn').disabled = true;
       const st = starsFor(moves), mv = moves, tm = elapsed;
-      const best = store.get('best.' + level, null);
+      const best = store.int('best.' + level, null, 0, 1e7);
       if (best === null || moves < best) store.set('best.' + level, moves);
-      const bestStars = Math.max(st, store.get('stars.' + level, 0));
+      const bestStars = Math.max(st, store.int('stars.' + level, 0, 0, 3));
       store.set('stars.' + level, bestStars);
       if (!quiet) {
         sfx('win');
@@ -542,7 +576,8 @@
         el('winText').textContent = mv + ' move' + (mv === 1 ? '' : 's') + ' (par ' + par + ') in ' + fmtTime(tm) +
           '. Best on this level: ' + (b => b + ' move' + (b === 1 ? '' : 's'))(Math.min(mv, best === null ? mv : best)) + '.';
         winOv.classList.add('show');
-        el('nextBtn').focus();
+        el('announce').textContent = 'Level ' + level + ' solved in ' + mv + ' move' + (mv === 1 ? '' : 's') + '. ' + st + ' of 3 stars.';
+        el('nextBtn').focus({ preventScroll: true });
       }, 900);
     } else if (!quiet && !solved && litSet.size > lastLitCount) sfx('link');
     lastLitCount = litSet.size;
@@ -586,7 +621,7 @@
   // Stars earned on this level, shown in the level bar
   let starsKey = '';
   function paintLevelStars() {
-    const n = Math.max(0, Math.min(3, store.get('stars.' + level, 0) | 0)), key = level + ':' + n;
+    const n = store.int('stars.' + level, 0, 0, 3), key = level + ':' + n;
     if (key === starsKey) return;
     starsKey = key;
     const s = el('lvStars');
@@ -612,25 +647,34 @@
     toastTimer = setTimeout(() => t.classList.remove('show'), ms || 2500);
   }
 
-  // Restart asks once when there are moves to lose
-  let armTimer = 0;
+  // Restart and the level arrows ask once when there are moves to lose
+  let armTimer = 0, armed = '';
   function disarmRestart() {
-    clearTimeout(armTimer); armTimer = 0;
-    el('resetLbl').textContent = 'Restart'; el('resetBtn').classList.remove('armed');
+    clearTimeout(armTimer); armTimer = 0; armed = '';
+    el('resetLbl').textContent = 'Restart';
+    for (const id of ['resetBtn', 'prevBtn', 'skipBtn']) el(id).classList.remove('armed');
+  }
+  // first press arms the button (true = wait for a second press), the second goes ahead
+  function needConfirm(id) {
+    if (!(moves > 0 && !solved) || armed === id) return false;
+    disarmRestart();
+    armed = id; el(id).classList.add('armed');
+    armTimer = setTimeout(disarmRestart, 2500);
+    return true;
   }
   function pressRestart() {
-    if (moves > 0 && !solved && !armTimer) {
-      el('resetLbl').textContent = 'Sure?'; el('resetBtn').classList.add('armed');
-      armTimer = setTimeout(disarmRestart, 2500);
-      return;
-    }
+    if (needConfirm('resetBtn')) { el('resetLbl').textContent = 'Sure?'; return; }
     startLevel(level, true);
+  }
+  function pressLevel(id, lv) {
+    if (needConfirm(id)) { toast('Press again to leave this level. Your moves here will be lost.'); return; }
+    startLevel(lv, false);
   }
 
   // Progress inside a level survives a reload
   function saveCur() {
     if (solved || !tiles || (!started && !history.length && undosLeft === MAX_UNDO)) return;
-    store.set('cur', { lv: level, c: cols, r: rows, t: tiles, p: par, m: moves, u: undosLeft, e: Math.round(elapsedNow()), h: history, s: started });
+    store.set('cur', { lv: level, c: cols, r: rows, t: tiles, p: par, pv: 2, m: moves, u: undosLeft, e: Math.round(elapsedNow()), h: history, s: started });
   }
   function restoreCur(c) {
     if (!c || c.lv !== level || c.c !== cols || c.r !== rows || !Array.isArray(c.t) || c.t.length !== solution.length) return false;
@@ -644,9 +688,22 @@
     const keep = tiles;
     tiles = c.t.slice();
     if (computeLit().size === tiles.length) { tiles = keep; return false; }
-    par = c.p; moves = c.m; undosLeft = c.u;
+    moves = c.m; undosLeft = c.u;
     history = Array.isArray(c.h) ? c.h.filter(x => x && Number.isInteger(x.i) && x.i >= 0 && x.i < tiles.length && (x.dir === 1 || x.dir === -1)) : [];
-    elapsed = Math.max(0, +c.e || 0); started = !!c.s; runStart = 0;
+    par = c.p;
+    if (c.pv !== 2) {
+      // a save from before 1.9 holds the old par: work out the new par from the starting board.
+      // First undo the saved moves (exact, also after a Restart); else use the level's own start (keep).
+      let start = null;
+      if (history.length === c.m) {
+        start = tiles.slice();
+        for (let j = history.length - 1; j >= 0; j--) { const x = history[j]; start[x.i] = x.dir > 0 ? rotCCW(start[x.i]) : rotCW(start[x.i]); }
+      }
+      if (start && oldParOf(start, solution) === c.p) par = parOf(start, solution);
+      else if (keep && keep.length === tiles.length && oldParOf(keep, solution) === c.p) par = parOf(keep, solution);
+    }
+    const e = +c.e;
+    elapsed = Number.isFinite(e) ? Math.min(Math.max(0, e), 360000000) : 0; started = !!c.s; runStart = 0;
     if (started && !paused) runStart = performance.now();
     litSet = null; update(true);
     untouched = false;
@@ -674,6 +731,17 @@
       else if (kind === 'win') [523, 659, 784, 1047].forEach((f, k) => tone(f, k * 0.11, 0.35, 0.08));
     } catch (e) {}
   }
+
+  // iOS unlocks audio only on touchend or click: create and resume the context there once
+  function unlockAudio() {
+    if (!soundOn || paused) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') quietPromise(actx.resume());
+    } catch (e) {}
+    document.removeEventListener('touchend', unlockAudio); document.removeEventListener('click', unlockAudio);
+  }
+  document.addEventListener('touchend', unlockAudio, { passive: true }); document.addEventListener('click', unlockAudio);
 
   // Pause while the tab is hidden or the help card is open
   let paused = false;
@@ -727,6 +795,14 @@
     }
     return { w: Math.max(120, Math.floor(w)), h: Math.max(120, Math.floor(h)) };
   }
+  // the help card sits on the board; when the board is too short for it, it uses the whole window
+  function fitHelp() {
+    if (!helpOv.classList.contains('show')) return;
+    helpOv.classList.remove('full');
+    const c = helpOv.querySelector('.card'), b = el('helpBody');
+    const need = c.offsetHeight - b.clientHeight + b.scrollHeight + 24;
+    helpOv.classList.toggle('full', need > el('wrap').clientHeight + 1);
+  }
   function layout() {
     const a = measure();
     if (!cols) return;
@@ -736,6 +812,7 @@
     const cw = t * cols, ch = t * rows;
     const wrap = el('wrap');
     wrap.style.width = (cw / dpr) + 'px'; wrap.style.height = (ch / dpr) + 'px';
+    fitHelp();
     // header and buttons follow the board width in the tall and middle layouts
     const bw = Math.round(cw / dpr) + 'px';
     if (document.body.style.getPropertyValue('--bw') !== bw) document.body.style.setProperty('--bw', bw);
@@ -744,6 +821,10 @@
       scv.width = cw; scv.height = ch;
       px = dpr; cell = t; sprites = {};
     }
+    // very short screens: if the page cannot fit, let it scroll so every button can be reached
+    const root = document.documentElement;
+    root.classList.remove('overflowy');
+    root.classList.toggle('overflowy', document.body.scrollHeight > window.innerHeight + 1);
     wake();
   }
 
@@ -1026,7 +1107,8 @@
     if (animating || dirty) { rafId = requestAnimationFrame(frame); return; }
     // idle: a slow tick for the flicker and the clock, or nothing at all
     let delay = Infinity;
-    if (!reduced && lanterns.some(i => litSet.has(i))) delay = 80;
+    // the flame flicker stops while the win card is shown (help open or tab hidden: paused above)
+    if (!reduced && !winOv.classList.contains('show') && lanterns.some(i => litSet.has(i))) delay = 80;
     if (runStart) delay = Math.min(delay, 1005 - (elapsedNow(now) % 1000));
     if (delay < Infinity) tickId = setTimeout(() => { tickId = 0; if (!rafId) rafId = requestAnimationFrame(frame); }, delay);
   }
@@ -1087,12 +1169,19 @@
   canvas.addEventListener('focus', wake);
   canvas.addEventListener('blur', wake);
   document.addEventListener('keydown', ev => {
-    if (helpOv.classList.contains('show')) { if (ev.key === 'Escape' || ev.key === 'Enter') { closeHelp(); ev.preventDefault(); } return; }
     const ae = document.activeElement;
     const onBoard = !ae || ae === canvas || ae === document.body || ae === document.documentElement;
+    // one-shot keys ignore key auto-repeat (holding R or Z); only the arrow keys may repeat
+    const arrowKey = ev.key && ev.key.indexOf('Arrow') === 0;
+    if (ev.repeat && !arrowKey) { if (ev.key === ' ' || ev.key === 'Enter' || ev.key.toLowerCase() === 'z') ev.preventDefault(); return; }
+    if (helpOv.classList.contains('show')) {
+      // Enter closes help only when focus is in the card (or nowhere); on another button it presses that button
+      if (ev.key === 'Escape' || (ev.key === 'Enter' && (onBoard || helpOv.contains(ae)))) { closeHelp(); ev.preventDefault(); }
+      return;
+    }
     if (winOv.classList.contains('show') && ev.key === 'Enter' && onBoard) { el('nextBtn').click(); ev.preventDefault(); return; }
     const k = ev.key.toLowerCase();
-    if (k === 'z' && !ev.altKey) { undo(); ev.preventDefault(); return; }
+    if (k === 'z' && !ev.altKey && !(ev.shiftKey && (ev.ctrlKey || ev.metaKey))) { undo(); ev.preventDefault(); return; }
     if (k === 'r' && !ev.metaKey && !ev.ctrlKey && !ev.altKey) { pressRestart(); return; }
     const n = cols; let x = cursor % n, y = (cursor / n) | 0;
     switch (ev.key) {
@@ -1112,14 +1201,14 @@
     wake();
   });
 
-  function openHelp() { helpOv.classList.add('show'); helpOv.scrollTop = 0; setPaused(); el('helpClose').focus({ preventScroll: true }); }
+  function openHelp() { helpOv.classList.add('show'); fitHelp(); helpOv.scrollTop = 0; el('helpBody').scrollTop = 0; setPaused(); el('helpClose').focus({ preventScroll: true }); }
   function closeHelp() { helpOv.classList.remove('show'); store.set('seenHelp', true); setPaused(); canvas.focus({ preventScroll: true }); }
   el('helpBtn').addEventListener('click', openHelp);
   el('helpClose').addEventListener('click', closeHelp);
   el('nextBtn').addEventListener('click', () => startLevel(level + 1, false));
   el('replayBtn').addEventListener('click', () => startLevel(level, true));
-  el('skipBtn').addEventListener('click', () => { if (solved || solvedBefore) startLevel(level + 1, false); });
-  el('prevBtn').addEventListener('click', () => { if (level > 1) startLevel(level - 1, false); });
+  el('skipBtn').addEventListener('click', () => { if (solved || solvedBefore) pressLevel('skipBtn', level + 1); });
+  el('prevBtn').addEventListener('click', () => { if (level > 1) pressLevel('prevBtn', level - 1); });
   el('resetBtn').addEventListener('click', pressRestart);
   el('undoBtn').addEventListener('click', undo);
   const SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>';
@@ -1173,9 +1262,12 @@
   if (savedCur && savedCur.lv === level && okDim(savedCur.c) && okDim(savedCur.r)) startLevel(level, false, { c: savedCur.c, r: savedCur.r });
   else startLevel(level, false);
   if (savedCur && restoreCur(savedCur)) saveCur();
-  if (!store.get('seenHelp', false)) helpOv.classList.add('show');
+  if (!store.get('seenHelp', false)) { helpOv.classList.add('show'); fitHelp(); }
   setPaused();
-  if (helpOv.classList.contains('show')) el('helpClose').focus({ preventScroll: true }); else canvas.focus({ preventScroll: true });
+  // standalone: ready for the keyboard at once. Embedded: wait for the player's first click or tap,
+  // so Space and the arrow keys keep scrolling the host page until then.
+  if (!embedded) { if (helpOv.classList.contains('show')) el('helpClose').focus({ preventScroll: true }); else canvas.focus({ preventScroll: true }); }
+  canvas.addEventListener('pointerdown', () => { if (document.activeElement !== canvas) canvas.focus({ preventScroll: true }); });
   booted = true;
   requestAnimationFrame(() => requestAnimationFrame(refit));
 
